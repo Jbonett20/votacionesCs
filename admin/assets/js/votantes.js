@@ -17,12 +17,18 @@ $(document).ready(function() {
         }
     ];
     
-    // Si no es líder, agregar columna de líder
+    // Si no es líder, agregar columna de líder/admin
     if (!esLider) {
         columns.push({
             data: null,
             render: function(data) {
-                return data.lider_nombres + ' ' + data.lider_apellidos;
+                if (data.lider_nombres && data.lider_apellidos) {
+                    return '<span class="badge bg-info">' + data.lider_nombres + ' ' + data.lider_apellidos + '</span>';
+                } else if (data.admin_directo) {
+                    return '<span class="badge bg-primary">Por ' + data.admin_directo + '</span>';
+                } else {
+                    return '<span class="badge bg-secondary">Sin asignar</span>';
+                }
             }
         });
     }
@@ -63,7 +69,7 @@ $(document).ready(function() {
             },
             columns: columns,
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
             },
             responsive: true,
             order: [[0, 'desc']]
@@ -102,7 +108,7 @@ $(document).ready(function() {
                         let options = '<option value="">Seleccione...</option>';
                         options += '<option value="yo">Por mí (<?php echo htmlspecialchars($_SESSION["usuario_nombre"] ?? ""); ?>)</option>';
                         response.data.forEach(function(lider) {
-                            options += `<option value="${lider.id_usuario}">${lider.nombres} ${lider.apellidos}</option>`;
+                            options += `<option value="${lider.id_lider}">${lider.nombres} ${lider.apellidos}</option>`;
                         });
                         $('#id_lider').html(options);
                         
@@ -208,6 +214,7 @@ $(document).ready(function() {
                     $('#id_tipo_identificacion').val(votante.id_tipo_identificacion);
                     $('#identificacion').val(votante.identificacion);
                     $('#sexo').val(votante.sexo);
+                    $('#telefono').val(votante.telefono || '');
                     $('#id_estado').val(votante.id_estado);
                     
                     if (!esLider) {

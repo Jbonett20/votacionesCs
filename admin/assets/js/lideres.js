@@ -1,5 +1,57 @@
 $(document).ready(function() {
     let table;
+    const esSuperAdmin = typeof ES_SUPER_ADMIN !== 'undefined' ? ES_SUPER_ADMIN : false;
+    
+    // Configurar columnas
+    let columns = [
+        { data: 'id_lider' },
+        { data: 'nombres' },
+        { data: 'apellidos' },
+        { data: 'identificacion' },
+        { 
+            data: 'telefono',
+            defaultContent: 'Sin teléfono'
+        },
+        { 
+            data: 'sexo',
+            render: function(data) {
+                return data === 'M' ? 'Masculino' : (data === 'F' ? 'Femenino' : 'Otro');
+            }
+        }
+    ];
+    
+    // Agregar columna "Creado Por" solo para SuperAdmin
+    if (esSuperAdmin) {
+        columns.push({
+            data: 'creador',
+            defaultContent: 'No asignado'
+        });
+    }
+    
+    // Agregar columnas de estado y acciones
+    columns.push(
+        { 
+            data: 'id_estado',
+            render: function(data) {
+                return data == 1 
+                    ? '<span class="badge badge-success">Activo</span>' 
+                    : '<span class="badge badge-danger">Inactivo</span>';
+            }
+        },
+        {
+            data: null,
+            render: function(data) {
+                return `
+                    <button class="btn btn-sm btn-info btn-action" onclick="editarLider(${data.id_lider})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-action" onclick="eliminarLider(${data.id_lider})" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+            }
+        }
+    );
     
     // Inicializar DataTable
     function initDataTable() {
@@ -10,42 +62,9 @@ $(document).ready(function() {
                 data: { action: 'listar' },
                 dataSrc: 'data'
             },
-            columns: [
-                { data: 'id_usuario' },
-                { data: 'nombres' },
-                { data: 'apellidos' },
-                { data: 'identificacion' },
-                { data: 'usuario' },
-                { 
-                    data: 'sexo',
-                    render: function(data) {
-                        return data === 'M' ? 'Masculino' : (data === 'F' ? 'Femenino' : 'Otro');
-                    }
-                },
-                { 
-                    data: 'id_estado',
-                    render: function(data) {
-                        return data == 1 
-                            ? '<span class="badge badge-success">Activo</span>' 
-                            : '<span class="badge badge-danger">Inactivo</span>';
-                    }
-                },
-                {
-                    data: null,
-                    render: function(data) {
-                        return `
-                            <button class="btn btn-sm btn-info btn-action" onclick="editarLider(${data.id_usuario})" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger btn-action" onclick="eliminarLider(${data.id_usuario})" title="Eliminar">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        `;
-                    }
-                }
-            ],
+            columns: columns,
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
             },
             responsive: true,
             order: [[0, 'desc']]
@@ -77,8 +96,6 @@ $(document).ready(function() {
         $('#lider_id').val('');
         $('#action').val('crear');
         $('#modalTitleText').text('Nuevo Líder');
-        $('#passwordFields').show();
-        $('#clave, #clave_confirm').prop('required', true);
         $('#estadoField').hide();
     }
     
@@ -95,30 +112,6 @@ $(document).ready(function() {
         
         const formData = $(this).serialize();
         const action = $('#action').val();
-        
-        // Validar contraseñas si es creación
-        if (action === 'crear') {
-            const clave = $('#clave').val();
-            const claveConfirm = $('#clave_confirm').val();
-            
-            if (clave !== claveConfirm) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Las contraseñas no coinciden'
-                });
-                return;
-            }
-            
-            if (clave.length < 6) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'La contraseña debe tener al menos 6 caracteres'
-                });
-                return;
-            }
-        }
         
         $.ajax({
             url: '../controllers/lideres_controller.php',
@@ -164,19 +157,18 @@ $(document).ready(function() {
                 if (response.success) {
                     const lider = response.data;
                     
-                    $('#lider_id').val(lider.id_usuario);
+                    $('#lider_id').val(lider.id_lider);
                     $('#action').val('editar');
                     $('#nombres').val(lider.nombres);
                     $('#apellidos').val(lider.apellidos);
                     $('#id_tipo_identificacion').val(lider.id_tipo_identificacion);
                     $('#identificacion').val(lider.identificacion);
                     $('#sexo').val(lider.sexo);
-                    $('#usuario').val(lider.usuario);
+                    $('#telefono').val(lider.telefono || '');
+                    $('#direccion').val(lider.direccion || '');
                     $('#id_estado').val(lider.id_estado);
                     
                     $('#modalTitleText').text('Editar Líder');
-                    $('#passwordFields').hide();
-                    $('#clave, #clave_confirm').prop('required', false);
                     $('#estadoField').show();
                     
                     $('#modalLider').modal('show');

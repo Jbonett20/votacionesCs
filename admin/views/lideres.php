@@ -56,8 +56,11 @@ requerirRol([1, 2]);
                                     <th>Nombres</th>
                                     <th>Apellidos</th>
                                     <th>Identificación</th>
-                                    <th>Usuario</th>
+                                    <th>Teléfono</th>
                                     <th>Sexo</th>
+                                    <?php if (esSuperAdmin()): ?>
+                                    <th>Creado Por</th>
+                                    <?php endif; ?>
                                     <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
@@ -120,20 +123,14 @@ requerirRol([1, 2]);
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="usuario" class="form-label">Usuario *</label>
-                                <input type="text" class="form-control" id="usuario" name="usuario" required>
+                                <label for="telefono" class="form-label">Teléfono</label>
+                                <input type="text" class="form-control" id="telefono" name="telefono">
                             </div>
                         </div>
                         
-                        <div class="row" id="passwordFields">
-                            <div class="col-md-6 mb-3">
-                                <label for="clave" class="form-label">Contraseña *</label>
-                                <input type="password" class="form-control" id="clave" name="clave">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="clave_confirm" class="form-label">Confirmar Contraseña *</label>
-                                <input type="password" class="form-control" id="clave_confirm" name="clave_confirm">
-                            </div>
+                        <div class="mb-3">
+                            <label for="direccion" class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="direccion" name="direccion">
                         </div>
                         
                         <div class="mb-3" id="estadoField" style="display: none;">
@@ -168,6 +165,9 @@ requerirRol([1, 2]);
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Custom JS -->
     <script src="../assets/js/dashboard.js"></script>
+    <script>
+        const ES_SUPER_ADMIN = <?php echo esSuperAdmin() ? 'true' : 'false'; ?>;
+    </script>
     <script src="../assets/js/lideres.js"></script>
 </body>
 </html>

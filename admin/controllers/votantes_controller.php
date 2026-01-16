@@ -6,6 +6,7 @@
 
 require_once '../config/db.php';
 require_once '../config/session.php';
+require_once '../models/LiderModel.php';
 
 header('Content-Type: application/json');
 
@@ -50,24 +51,56 @@ function listarVotantes() {
         
         // Si es líder, solo ve sus votantes
         if ($usuario_rol == 3) {
+            // Verificar si el usuario es líder en la tabla lideres
+            $usuario_username = $_SESSION['usuario'] ?? $_SESSION['usuario_username'] ?? '';
+            $idLider = DB::queryOneValue("SELECT id_lider FROM lideres WHERE usuario = ?", $usuario_username);
+            
+            if (!$idLider) {
+                echo json_encode(['success' => true, 'data' => []]);
+                return;
+            }
+            
             $votantes = DB::queryAllRows(
-                "SELECT v.*, t.nombre_tipo, u.nombres as lider_nombres, u.apellidos as lider_apellidos
+                "SELECT v.*, t.nombre_tipo, l.nombres as lider_nombres, l.apellidos as lider_apellidos
                  FROM votantes v
                  INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
-                 INNER JOIN usuarios u ON v.id_lider = u.id_usuario
+                 LEFT JOIN lideres l ON v.id_lider = l.id_lider
                  WHERE v.id_lider = ?
                  ORDER BY v.id_votante DESC",
+                $idLider
+            );
+        } elseif ($usuario_rol == 2) {
+            // Admin solo ve votantes de sus líderes o registrados directamente por él
+            $votantes = DB::queryAllRows(
+                "SELECT v.*, t.nombre_tipo, 
+                        l.nombres as lider_nombres, l.apellidos as lider_apellidos,
+                        CONCAT(u.nombres, ' ', u.apellidos) as admin_directo
+                 FROM votantes v
+                 INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
+                 LEFT JOIN lideres l ON v.id_lider = l.id_lider
+                 LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+                 WHERE (l.id_usuario_creador = ? OR v.id_administrador_directo = ?)
+                 ORDER BY v.id_votante DESC",
+                $usuario_id,
                 $usuario_id
             );
         } else {
-            // SuperAdmin y Admin ven todos
+            // SuperAdmin ve todos
             $votantes = DB::queryAllRows(
-                "SELECT v.*, t.nombre_tipo, u.nombres as lider_nombres, u.apellidos as lider_apellidos
+                "SELECT v.*, t.nombre_tipo, 
+                        l.nombres as lider_nombres, l.apellidos as lider_apellidos,
+                        CONCAT(u.nombres, ' ', u.apellidos) as admin_directo
                  FROM votantes v
                  INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
-                 INNER JOIN usuarios u ON v.id_lider = u.id_usuario
+                 LEFT JOIN lideres l ON v.id_lider = l.id_lider
+                 LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
                  ORDER BY v.id_votante DESC"
             );
+        }
+        
+        // Asegurar que $votantes sea un array
+        if (!is_array($votantes)) {
+            $votantes = [];
         }
         
         echo json_encode(['success' => true, 'data' => $votantes]);
@@ -90,28 +123,37 @@ function crearVotante() {
             }
         }
         
-        // Determinar el líder
+        // Determinar el líder o administrador directo
         $id_lider = null;
+        $id_administrador_directo = null;
         $usuario_rol = $_SESSION['usuario_rol'];
+        $usuario_id = $_SESSION['usuario_id'];
         
         if ($usuario_rol == 3) {
-            // Si es líder, él mismo es el líder
-            $id_lider = $_SESSION['usuario_id'];
+            // Si es líder (usuario que SÍ se loguea), buscar su ID en la tabla lideres
+            $id_lider = DB::queryOneValue("SELECT id_lider FROM lideres WHERE usuario = ?", $_SESSION['usuario_username']);
+            
+            if (!$id_lider) {
+                echo json_encode(['success' => false, 'message' => 'Usuario líder no encontrado']);
+                return;
+            }
         } else {
             // Si es Admin o SuperAdmin
             $id_lider_post = $_POST['id_lider'] ?? '';
             
             if ($id_lider_post === 'actual' || $id_lider_post === 'yo') {
-                // Registrarse como líder (el admin se convierte en líder de este votante)
-                $id_lider = $_SESSION['usuario_id'];
-            } else {
+                // Registrar por mí (sin líder, directamente por el admin)
+                $id_lider = null;
+                $id_administrador_directo = $usuario_id;
+            } else if (!empty($id_lider_post)) {
+                // Asignar a un líder existente
                 $id_lider = $id_lider_post;
+                $id_administrador_directo = null;
+            } else {
+                // Sin líder, registrado directamente por admin
+                $id_lider = null;
+                $id_administrador_directo = $usuario_id;
             }
-        }
-        
-        if (empty($id_lider)) {
-            echo json_encode(['success' => false, 'message' => 'Debe seleccionar un líder']);
-            return;
         }
         
         // Validar que la identificación no exista
@@ -134,14 +176,26 @@ function crearVotante() {
             return;
         }
         
-        // Insertar votante
+        // Validar en lideres
+        $identificacionExisteLideres = DB::queryOneValue(
+            "SELECT COUNT(*) FROM lideres WHERE identificacion = ?", 
+            $_POST['identificacion']
+        );
+        if ($identificacionExisteLideres > 0) {
+            echo json_encode(['success' => false, 'message' => 'La identificación ya está registrada en líderes']);
+            return;
+        }
+        
+        // Insertar votante (puede tener líder o admin directo)
         $datos = [
             'nombres' => trim($_POST['nombres']),
             'apellidos' => trim($_POST['apellidos']),
             'identificacion' => trim($_POST['identificacion']),
             'id_tipo_identificacion' => $_POST['id_tipo_identificacion'],
             'sexo' => $_POST['sexo'],
-            'id_lider' => $id_lider,
+            'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
+            'id_lider' => $id_lider, // Puede ser NULL
+            'id_administrador_directo' => $id_administrador_directo, // Puede ser NULL
             'id_estado' => 1 // Activo
         ];
         
@@ -211,6 +265,7 @@ function editarVotante() {
             'identificacion' => trim($_POST['identificacion']),
             'id_tipo_identificacion' => $_POST['id_tipo_identificacion'],
             'sexo' => $_POST['sexo'],
+            'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
             'id_estado' => $_POST['id_estado'] ?? 1
         ];
         
@@ -338,12 +393,10 @@ function obtenerTiposIdentificacion() {
  */
 function obtenerLideres() {
     try {
-        $lideres = DB::queryAllRows(
-            "SELECT id_usuario, nombres, apellidos 
-             FROM usuarios 
-             WHERE id_rol = 3 AND id_estado = 1 
-             ORDER BY nombres, apellidos"
-        );
+        $usuario_id = $_SESSION['usuario_id'];
+        $usuario_rol = $_SESSION['usuario_rol'];
+        
+        $lideres = LiderModel::obtenerLideresActivos($usuario_id, $usuario_rol);
         
         echo json_encode([
             'success' => true, 

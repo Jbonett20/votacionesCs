@@ -1,6 +1,7 @@
 <?php
 require_once '../config/db.php';
 require_once '../config/session.php';
+require_once '../models/LiderModel.php';
 
 // Validar sesión
 requerirSesion();
@@ -12,32 +13,66 @@ if (esSuperAdmin()) {
     // SuperAdmin ve todo
     $stats['total_usuarios'] = DB::queryOneValue("SELECT COUNT(*) FROM usuarios WHERE id_estado = 1");
     $stats['total_administradores'] = DB::queryOneValue("SELECT COUNT(*) FROM usuarios WHERE id_rol = 2 AND id_estado = 1");
-    $stats['total_lideres'] = DB::queryOneValue("SELECT COUNT(*) FROM usuarios WHERE id_rol = 3 AND id_estado = 1");
+    $stats['total_lideres'] = LiderModel::contarLideres($_SESSION['usuario_id'], 1);
     $stats['total_votantes'] = DB::queryOneValue("SELECT COUNT(*) FROM votantes WHERE id_estado = 1");
 } elseif (esAdmin()) {
-    // Admin ve sus líderes y votantes
-    $stats['total_lideres'] = DB::queryOneValue("SELECT COUNT(*) FROM usuarios WHERE id_rol = 3 AND id_estado = 1");
-    $stats['total_votantes'] = DB::queryOneValue("SELECT COUNT(*) FROM votantes WHERE id_estado = 1");
+    // Admin ve solo sus líderes y votantes que le pertenecen
+    $stats['total_lideres'] = LiderModel::contarLideres($_SESSION['usuario_id'], 2);
+    // Contar votantes de sus líderes o registrados directamente por él
+    $stats['total_votantes'] = DB::queryOneValue(
+        "SELECT COUNT(DISTINCT v.id_votante) 
+         FROM votantes v
+         LEFT JOIN lideres l ON v.id_lider = l.id_lider
+         WHERE v.id_estado = 1 
+         AND (l.id_usuario_creador = ? OR v.id_administrador_directo = ?)",
+        $_SESSION['usuario_id'],
+        $_SESSION['usuario_id']
+    );
 } else {
     // Líder ve solo sus votantes
-    $stats['mis_votantes'] = DB::queryOneValue("SELECT COUNT(*) FROM votantes WHERE id_lider = ? AND id_estado = 1", $_SESSION['usuario_id']);
+    $idLider = DB::queryOneValue("SELECT id_lider FROM lideres WHERE usuario = ?", $_SESSION['usuario_username']);
+    if ($idLider) {
+        $stats['mis_votantes'] = DB::queryOneValue("SELECT COUNT(*) FROM votantes WHERE id_lider = ? AND id_estado = 1", $idLider);
+    } else {
+        $stats['mis_votantes'] = 0;
+    }
 }
 
 // Obtener actividad reciente
 $actividad_reciente = [];
-if (esSuperAdmin() || esAdmin()) {
+if (esSuperAdmin()) {
+    // SuperAdmin ve toda la actividad
     $actividad_reciente = DB::queryAllRows(
-        "SELECT v.*, u.nombres as lider_nombres, u.apellidos as lider_apellidos
+        "SELECT v.*, l.nombres as lider_nombres, l.apellidos as lider_apellidos,
+                CONCAT(u.nombres, ' ', u.apellidos) as admin_directo
          FROM votantes v
-         INNER JOIN usuarios u ON v.id_lider = u.id_usuario
+         LEFT JOIN lideres l ON v.id_lider = l.id_lider
+         LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
          ORDER BY v.fecha_creacion DESC
          LIMIT 5"
     );
-} else {
+} elseif (esAdmin()) {
+    // Admin solo ve actividad de sus líderes o registros directos
     $actividad_reciente = DB::queryAllRows(
-        "SELECT * FROM votantes WHERE id_lider = ? ORDER BY fecha_creacion DESC LIMIT 5",
+        "SELECT v.*, l.nombres as lider_nombres, l.apellidos as lider_apellidos,
+                CONCAT(u.nombres, ' ', u.apellidos) as admin_directo
+         FROM votantes v
+         LEFT JOIN lideres l ON v.id_lider = l.id_lider
+         LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+         WHERE (l.id_usuario_creador = ? OR v.id_administrador_directo = ?)
+         ORDER BY v.fecha_creacion DESC
+         LIMIT 5",
+        $_SESSION['usuario_id'],
         $_SESSION['usuario_id']
     );
+} else {
+    $idLider = DB::queryOneValue("SELECT id_lider FROM lideres WHERE usuario = ?", $_SESSION['usuario_username']);
+    if ($idLider) {
+        $actividad_reciente = DB::queryAllRows(
+            "SELECT * FROM votantes WHERE id_lider = ? ORDER BY fecha_creacion DESC LIMIT 5",
+            $idLider
+        );
+    }
 }
 ?>
 <!DOCTYPE html>

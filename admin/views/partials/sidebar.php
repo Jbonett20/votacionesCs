@@ -13,25 +13,25 @@
         <?php if (esSuperAdmin()): ?>
         <a href="usuarios.php" class="menu-item">
             <i class="fas fa-users-cog"></i>
-            <span>Usuarios</span>
-        </a>
-        <a href="administradores.php" class="menu-item">
-            <i class="fas fa-user-shield"></i>
-            <span>Administradores</span>
+            <span>Usuarios Admin</span>
         </a>
         <?php endif; ?>
         
-        <?php if (esAdmin()): ?>
+        <?php if (esSuperAdmin() || esAdmin()): ?>
         <a href="lideres.php" class="menu-item">
             <i class="fas fa-user-tie"></i>
             <span>Líderes</span>
+        </a>
+        <a href="votantes.php" class="menu-item">
+            <i class="fas fa-users"></i>
+            <span>Votantes</span>
         </a>
         <?php endif; ?>
         
         <?php if (esLider()): ?>
         <a href="votantes.php" class="menu-item">
             <i class="fas fa-users"></i>
-            <span>Votantes</span>
+            <span>Mis Votantes</span>
         </a>
         <?php endif; ?>
         
@@ -41,7 +41,7 @@
         </a>
         
         <a href="perfil.php" class="menu-item">
-            <i class="fas fa-user"></i>
+            <i class="fas fa-user-circle"></i>
             <span>Mi Perfil</span>
         </a>
     </div>
