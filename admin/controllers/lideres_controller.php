@@ -71,18 +71,20 @@ function crearLider() {
         // Validar que la identificación no exista
         $validacion = LiderModel::identificacionExiste($_POST['identificacion']);
         if ($validacion['existe']) {
-            $mensaje = "⚠️ La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
+            $mensaje = "<strong>⚠️ La identificación ya está registrada</strong><br><br>";
+            $mensaje .= "<strong>Tipo:</strong> {$validacion['tipo']}<br>";
+            $mensaje .= "<strong>Nombre:</strong> {$validacion['nombre']}<br>";
             
             if ($validacion['tipo'] === 'líder' && isset($validacion['administrador'])) {
-                $mensaje .= " → Creado por administrador: {$validacion['administrador']}";
+                $mensaje .= "<strong>Creado por:</strong> {$validacion['administrador']}";
             } elseif ($validacion['tipo'] === 'votante') {
                 if (isset($validacion['lider']) && $validacion['lider']) {
-                    $mensaje .= " → Pertenece al líder: {$validacion['lider']}";
+                    $mensaje .= "<strong>Pertenece al líder:</strong> {$validacion['lider']}";
                 } elseif (isset($validacion['administrador']) && $validacion['administrador']) {
-                    $mensaje .= " → Registrado directamente por: {$validacion['administrador']}";
+                    $mensaje .= "<strong>Registrado por:</strong> {$validacion['administrador']}";
                 }
             } elseif ($validacion['tipo'] === 'usuario' && isset($validacion['rol'])) {
-                $mensaje .= " → Rol: {$validacion['rol']}";
+                $mensaje .= "<strong>Rol:</strong> {$validacion['rol']}";
             }
             
             echo json_encode(['success' => false, 'message' => $mensaje]);
@@ -147,18 +149,20 @@ function editarLider() {
         // Validar que la identificación no exista (excepto la actual)
         $validacion = LiderModel::identificacionExiste($_POST['identificacion'], $id);
         if ($validacion['existe']) {
-            $mensaje = "⚠️ La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
+            $mensaje = "<strong>⚠️ La identificación ya está registrada</strong><br><br>";
+            $mensaje .= "<strong>Tipo:</strong> {$validacion['tipo']}<br>";
+            $mensaje .= "<strong>Nombre:</strong> {$validacion['nombre']}<br>";
             
             if ($validacion['tipo'] === 'líder' && isset($validacion['administrador'])) {
-                $mensaje .= " → Creado por administrador: {$validacion['administrador']}";
+                $mensaje .= "<strong>Creado por:</strong> {$validacion['administrador']}";
             } elseif ($validacion['tipo'] === 'votante') {
                 if (isset($validacion['lider']) && $validacion['lider']) {
-                    $mensaje .= " → Pertenece al líder: {$validacion['lider']}";
+                    $mensaje .= "<strong>Pertenece al líder:</strong> {$validacion['lider']}";
                 } elseif (isset($validacion['administrador']) && $validacion['administrador']) {
-                    $mensaje .= " → Registrado directamente por: {$validacion['administrador']}";
+                    $mensaje .= "<strong>Registrado por:</strong> {$validacion['administrador']}";
                 }
             } elseif ($validacion['tipo'] === 'usuario' && isset($validacion['rol'])) {
-                $mensaje .= " → Rol: {$validacion['rol']}";
+                $mensaje .= "<strong>Rol:</strong> {$validacion['rol']}";
             }
             
             echo json_encode(['success' => false, 'message' => $mensaje]);
@@ -209,8 +213,15 @@ function eliminarLider() {
             return;
         }
         
-        // Cambiar estado a inactivo
-        LiderModel::cambiarEstado($id, 2);
+        // Verificar si el líder tiene votantes asignados
+        $tieneVotantes = DB::queryOneValue("SELECT COUNT(*) FROM votantes WHERE id_lider = ?", $id);
+        if ($tieneVotantes > 0) {
+            echo json_encode(['success' => false, 'message' => "No se puede eliminar el líder porque tiene {$tieneVotantes} votante(s) asignado(s). Primero reasigna o elimina sus votantes."]);
+            return;
+        }
+        
+        // Eliminar permanentemente el líder
+        DB::delete('lideres', 'id_lider = ?', $id);
         
         echo json_encode([
             'success' => true, 

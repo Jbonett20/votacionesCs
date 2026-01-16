@@ -160,18 +160,20 @@ function crearVotante() {
         require_once '../models/LiderModel.php';
         $validacion = LiderModel::identificacionExiste($_POST['identificacion']);
         if ($validacion['existe']) {
-            $mensaje = "⚠️ La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
+            $mensaje = "<strong>⚠️ La identificación ya está registrada</strong><br><br>";
+            $mensaje .= "<strong>Tipo:</strong> {$validacion['tipo']}<br>";
+            $mensaje .= "<strong>Nombre:</strong> {$validacion['nombre']}<br>";
             
             if ($validacion['tipo'] === 'líder' && isset($validacion['administrador'])) {
-                $mensaje .= " → Creado por administrador: {$validacion['administrador']}";
+                $mensaje .= "<strong>Creado por:</strong> {$validacion['administrador']}";
             } elseif ($validacion['tipo'] === 'votante') {
                 if (isset($validacion['lider']) && $validacion['lider']) {
-                    $mensaje .= " → Pertenece al líder: {$validacion['lider']}";
+                    $mensaje .= "<strong>Pertenece al líder:</strong> {$validacion['lider']}";
                 } elseif (isset($validacion['administrador']) && $validacion['administrador']) {
-                    $mensaje .= " → Registrado directamente por: {$validacion['administrador']}";
+                    $mensaje .= "<strong>Registrado por:</strong> {$validacion['administrador']}";
                 }
             } elseif ($validacion['tipo'] === 'usuario' && isset($validacion['rol'])) {
-                $mensaje .= " → Rol: {$validacion['rol']}";
+                $mensaje .= "<strong>Rol:</strong> {$validacion['rol']}";
             }
             
             echo json_encode(['success' => false, 'message' => $mensaje]);
@@ -188,6 +190,7 @@ function crearVotante() {
             'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
             'id_lider' => $id_lider, // Puede ser NULL
             'id_administrador_directo' => $id_administrador_directo, // Puede ser NULL
+            'id_usuario_creador' => $usuario_id, // Usuario que crea el registro
             'id_estado' => 1 // Activo
         ];
         
@@ -243,18 +246,20 @@ function editarVotante() {
         require_once '../models/LiderModel.php';
         $validacion = LiderModel::identificacionExiste($_POST['identificacion'], $id, 'votante');
         if ($validacion['existe']) {
-            $mensaje = "⚠️ La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
+            $mensaje = "<strong>⚠️ La identificación ya está registrada</strong><br><br>";
+            $mensaje .= "<strong>Tipo:</strong> {$validacion['tipo']}<br>";
+            $mensaje .= "<strong>Nombre:</strong> {$validacion['nombre']}<br>";
             
             if ($validacion['tipo'] === 'líder' && isset($validacion['administrador'])) {
-                $mensaje .= " → Creado por administrador: {$validacion['administrador']}";
+                $mensaje .= "<strong>Creado por:</strong> {$validacion['administrador']}";
             } elseif ($validacion['tipo'] === 'votante') {
                 if (isset($validacion['lider']) && $validacion['lider']) {
-                    $mensaje .= " → Pertenece al líder: {$validacion['lider']}";
+                    $mensaje .= "<strong>Pertenece al líder:</strong> {$validacion['lider']}";
                 } elseif (isset($validacion['administrador']) && $validacion['administrador']) {
-                    $mensaje .= " → Registrado directamente por: {$validacion['administrador']}";
+                    $mensaje .= "<strong>Registrado por:</strong> {$validacion['administrador']}";
                 }
             } elseif ($validacion['tipo'] === 'usuario' && isset($validacion['rol'])) {
-                $mensaje .= " → Rol: {$validacion['rol']}";
+                $mensaje .= "<strong>Rol:</strong> {$validacion['rol']}";
             }
             
             echo json_encode(['success' => false, 'message' => $mensaje]);
@@ -320,8 +325,8 @@ function eliminarVotante() {
             }
         }
         
-        // Cambiar estado a inactivo
-        DB::update('votantes', ['id_estado' => 2], 'id_votante = ?', $id);
+        // Eliminar permanentemente el votante
+        DB::delete('votantes', 'id_votante = ?', $id);
         
         echo json_encode([
             'success' => true, 

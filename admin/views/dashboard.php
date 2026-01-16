@@ -110,10 +110,6 @@ if (esSuperAdmin()) {
                 <i class="fas fa-users-cog"></i>
                 <span>Usuarios</span>
             </a>
-            <a href="administradores.php" class="menu-item">
-                <i class="fas fa-user-shield"></i>
-                <span>Administradores</span>
-            </a>
             <?php endif; ?>
             
             <?php if (esAdmin()): ?>

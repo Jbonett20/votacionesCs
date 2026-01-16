@@ -89,7 +89,7 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
     </div>
     
     <!-- Modal Votante -->
-    <div class="modal fade" id="modalVotante" tabindex="-1">
+    <div class="modal fade" id="modalVotante" >
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -153,7 +153,6 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                             </select>
                         </div>
                         <?php endif; ?>
-                        </div>
                         
                         <div class="mb-3" id="estadoField" style="display: none;">
                             <label for="id_estado" class="form-label">Estado *</label>
