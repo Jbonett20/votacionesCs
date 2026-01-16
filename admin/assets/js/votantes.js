@@ -1,6 +1,8 @@
 $(document).ready(function() {
-    let table;
+    console.log('votantes.js cargado correctamente');
+    let votantesTable;
     const esLider = $('#es_lider').val() === '1';
+    console.log('Es líder:', esLider);
     
     // Configurar columnas según rol
     let columns = [
@@ -60,7 +62,7 @@ $(document).ready(function() {
     
     // Inicializar DataTable
     function initDataTable() {
-        table = $('#tableVotantes').DataTable({
+        votantesTable = $('#tableVotantes').DataTable({
             ajax: {
                 url: '../controllers/votantes_controller.php',
                 type: 'POST',
@@ -135,6 +137,9 @@ $(document).ready(function() {
         
         if (!esLider) {
             $('#id_lider').val('').trigger('change');
+        } else {
+            // Si es líder, quitar el required del campo id_lider si existe
+            $('#id_lider').removeAttr('required');
         }
     }
     
@@ -148,8 +153,10 @@ $(document).ready(function() {
     // Guardar votante
     $('#formVotante').on('submit', function(e) {
         e.preventDefault();
+        console.log('Submit capturado'); // DEBUG
         
         let formData = $(this).serializeArray();
+        console.log('Datos del formulario:', formData); // DEBUG
         
         // Si es líder, agregar su ID como id_lider
         if (esLider) {
@@ -169,24 +176,31 @@ $(document).ready(function() {
             data: $.param(formData),
             dataType: 'json',
             success: function(response) {
-                if (response.success) {
+                console.log('Respuesta completa:', response);
+                
+                if (response && response.success) {
                     Swal.fire({
                         icon: 'success',
                         title: 'Éxito',
-                        text: response.message,
-                        timer: 2000
+                        text: response.message || 'Operación exitosa',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        $('#modalVotante').modal('hide');
+                        votantesTable.ajax.reload();
                     });
-                    $('#modalVotante').modal('hide');
-                    table.ajax.reload();
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: response.message
+                        html: response.message || 'Error desconocido',
+                        showConfirmButton: true
                     });
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.log('Error AJAX:', xhr, status, error);
+                console.log('Respuesta:', xhr.responseText);
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -262,7 +276,7 @@ $(document).ready(function() {
                                 text: response.message,
                                 timer: 2000
                             });
-                            table.ajax.reload();
+                            votantesTable.ajax.reload();
                         } else {
                             Swal.fire({
                                 icon: 'error',
@@ -280,6 +294,88 @@ $(document).ready(function() {
     initDataTable();
     cargarTiposIdentificacion();
     cargarLideres();
+    
+    // Importar votantes
+    $('#formImportar').on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        formData.append('action', 'importar_votantes');
+        
+        const btnImportar = $('#btnImportar');
+        btnImportar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Importando...');
+        
+        $.ajax({
+            url: '../controllers/importar_controller.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(response) {
+                btnImportar.prop('disabled', false).html('<i class="fas fa-upload"></i> Importar');
+                
+                if (response.success) {
+                    let mensaje = `<div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle"></i> ${response.message}</h6>
+                        <p><strong>${response.insertados}</strong> votantes importados exitosamente.</p>
+                    </div>`;
+                    
+                    // Mostrar duplicados si existen
+                    if (response.duplicados && response.duplicados.length > 0) {
+                        mensaje += `<div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Duplicados Encontrados (${response.duplicados.length})</h6>
+                            <ul class="mb-0" style="max-height: 200px; overflow-y: auto;">`;
+                        response.duplicados.forEach(dup => {
+                            mensaje += `<li>${dup}</li>`;
+                        });
+                        mensaje += `</ul></div>`;
+                    }
+                    
+                    // Mostrar errores si existen
+                    if (response.errores && response.errores.length > 0) {
+                        mensaje += `<div class="alert alert-danger">
+                            <h6><i class="fas fa-times-circle"></i> Errores (${response.errores.length})</h6>
+                            <ul class="mb-0" style="max-height: 200px; overflow-y: auto;">`;
+                        response.errores.forEach(err => {
+                            mensaje += `<li>${err}</li>`;
+                        });
+                        mensaje += `</ul></div>`;
+                    }
+                    
+                    $('#mensajeImportacion').html(mensaje);
+                    $('#resultadoImportacion').show();
+                    $('#archivo').val('');
+                    
+                    // Recargar tabla si se importó algo
+                    if (response.insertados > 0) {
+                        votantesTable.ajax.reload();
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message
+                    });
+                }
+            },
+            error: function() {
+                btnImportar.prop('disabled', false).html('<i class="fas fa-upload"></i> Importar');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al procesar la importación'
+                });
+            }
+        });
+    });
+    
+    // Limpiar resultado al cerrar modal
+    $('#modalImportar').on('hidden.bs.modal', function() {
+        $('#formImportar')[0].reset();
+        $('#resultadoImportacion').hide();
+        $('#mensajeImportacion').html('');
+    });
 });
 
 // Funciones globales fuera del document.ready
@@ -287,85 +383,3 @@ $(document).ready(function() {
 function descargarPlantilla() {
     window.location.href = '../controllers/exportar_controller.php?action=descargar_plantilla';
 }
-
-// Importar votantes
-$('#formImportar').on('submit', function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    formData.append('action', 'importar_votantes');
-    
-    const btnImportar = $('#btnImportar');
-    btnImportar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Importando...');
-    
-    $.ajax({
-        url: '../controllers/importar_controller.php',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        dataType: 'json',
-        success: function(response) {
-            btnImportar.prop('disabled', false).html('<i class="fas fa-upload"></i> Importar');
-            
-            if (response.success) {
-                let mensaje = `<div class="alert alert-success">
-                    <h6><i class="fas fa-check-circle"></i> ${response.message}</h6>
-                    <p><strong>${response.insertados}</strong> votantes importados exitosamente.</p>
-                </div>`;
-                
-                // Mostrar duplicados si existen
-                if (response.duplicados && response.duplicados.length > 0) {
-                    mensaje += `<div class="alert alert-warning">
-                        <h6><i class="fas fa-exclamation-triangle"></i> Duplicados Encontrados (${response.duplicados.length})</h6>
-                        <ul class="mb-0" style="max-height: 200px; overflow-y: auto;">`;
-                    response.duplicados.forEach(dup => {
-                        mensaje += `<li>${dup}</li>`;
-                    });
-                    mensaje += `</ul></div>`;
-                }
-                
-                // Mostrar errores si existen
-                if (response.errores && response.errores.length > 0) {
-                    mensaje += `<div class="alert alert-danger">
-                        <h6><i class="fas fa-times-circle"></i> Errores (${response.errores.length})</h6>
-                        <ul class="mb-0" style="max-height: 200px; overflow-y: auto;">`;
-                    response.errores.forEach(err => {
-                        mensaje += `<li>${err}</li>`;
-                    });
-                    mensaje += `</ul></div>`;
-                }
-                
-                $('#mensajeImportacion').html(mensaje);
-                $('#resultadoImportacion').show();
-                $('#archivo').val('');
-                
-                // Recargar tabla si se importó algo
-                if (response.insertados > 0) {
-                    $('#tableVotantes').DataTable().ajax.reload();
-                }
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: response.message
-                });
-            }
-        },
-        error: function() {
-            btnImportar.prop('disabled', false).html('<i class="fas fa-upload"></i> Importar');
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error al procesar la importación'
-            });
-        }
-    });
-});
-
-// Limpiar resultado al cerrar modal
-$('#modalImportar').on('hidden.bs.modal', function() {
-    $('#formImportar')[0].reset();
-    $('#resultadoImportacion').hide();
-    $('#mensajeImportacion').html('');
-});

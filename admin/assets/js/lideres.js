@@ -119,24 +119,31 @@ $(document).ready(function() {
             data: formData,
             dataType: 'json',
             success: function(response) {
-                if (response.success) {
+                console.log('Respuesta completa:', response);
+                
+                if (response && response.success) {
                     Swal.fire({
                         icon: 'success',
                         title: 'Éxito',
-                        text: response.message,
-                        timer: 2000
+                        text: response.message || 'Operación exitosa',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        $('#modalLider').modal('hide');
+                        table.ajax.reload();
                     });
-                    $('#modalLider').modal('hide');
-                    table.ajax.reload();
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: response.message
+                        html: response.message || 'Error desconocido',
+                        showConfirmButton: true
                     });
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.log('Error AJAX:', xhr, status, error);
+                console.log('Respuesta:', xhr.responseText);
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -214,7 +221,7 @@ $(document).ready(function() {
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: response.message
+                                html: response.message
                             });
                         }
                     }
