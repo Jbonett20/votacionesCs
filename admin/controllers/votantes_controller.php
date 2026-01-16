@@ -8,7 +8,7 @@ require_once '../config/db.php';
 require_once '../config/session.php';
 require_once '../models/LiderModel.php';
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 // Validar sesión y permisos
 requerirRol([1, 2, 3]); // SuperAdmin, Admin y Líder
@@ -156,33 +156,19 @@ function crearVotante() {
             }
         }
         
-        // Validar que la identificación no exista
-        $identificacionExiste = DB::queryOneValue(
-            "SELECT COUNT(*) FROM votantes WHERE identificacion = ?", 
-            $_POST['identificacion']
-        );
-        if ($identificacionExiste > 0) {
-            echo json_encode(['success' => false, 'message' => 'La identificación ya está registrada']);
-            return;
-        }
-        
-        // Validar que el usuario existe en la tabla usuarios también
-        $identificacionExisteUsuarios = DB::queryOneValue(
-            "SELECT COUNT(*) FROM usuarios WHERE identificacion = ?", 
-            $_POST['identificacion']
-        );
-        if ($identificacionExisteUsuarios > 0) {
-            echo json_encode(['success' => false, 'message' => 'La identificación ya está registrada en usuarios']);
-            return;
-        }
-        
-        // Validar en lideres
-        $identificacionExisteLideres = DB::queryOneValue(
-            "SELECT COUNT(*) FROM lideres WHERE identificacion = ?", 
-            $_POST['identificacion']
-        );
-        if ($identificacionExisteLideres > 0) {
-            echo json_encode(['success' => false, 'message' => 'La identificación ya está registrada en líderes']);
+        // VALIDACIÓN DE DUPLICADOS EN TODO EL SISTEMA
+        require_once '../models/LiderModel.php';
+        $validacion = LiderModel::identificacionExiste($_POST['identificacion']);
+        if ($validacion['existe']) {
+            $mensaje = "La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
+            if (isset($validacion['administrador']) && $validacion['administrador']) {
+                $mensaje .= " (Administrador: {$validacion['administrador']})";
+            } elseif (isset($validacion['rol'])) {
+                $mensaje .= " ({$validacion['rol']})";
+            } elseif (isset($validacion['lider']) && $validacion['lider']) {
+                $mensaje .= " (Líder: {$validacion['lider']})";
+            }
+            echo json_encode(['success' => false, 'message' => $mensaje]);
             return;
         }
         
@@ -247,14 +233,19 @@ function editarVotante() {
             }
         }
         
-        // Validar que la identificación no exista (excepto la actual)
-        $identificacionExiste = DB::queryOneValue(
-            "SELECT COUNT(*) FROM votantes WHERE identificacion = ? AND id_votante != ?", 
-            $_POST['identificacion'], 
-            $id
-        );
-        if ($identificacionExiste > 0) {
-            echo json_encode(['success' => false, 'message' => 'La identificación ya está registrada']);
+        // VALIDACIÓN DE DUPLICADOS EN TODO EL SISTEMA (excepto el actual)
+        require_once '../models/LiderModel.php';
+        $validacion = LiderModel::identificacionExiste($_POST['identificacion'], $id, 'votante');
+        if ($validacion['existe']) {
+            $mensaje = "La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
+            if (isset($validacion['administrador']) && $validacion['administrador']) {
+                $mensaje .= " (Administrador: {$validacion['administrador']})";
+            } elseif (isset($validacion['rol'])) {
+                $mensaje .= " ({$validacion['rol']})";
+            } elseif (isset($validacion['lider']) && $validacion['lider']) {
+                $mensaje .= " (Líder: {$validacion['lider']})";
+            }
+            echo json_encode(['success' => false, 'message' => $mensaje]);
             return;
         }
         

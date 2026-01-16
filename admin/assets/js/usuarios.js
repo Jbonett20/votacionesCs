@@ -1,6 +1,21 @@
 $(document).ready(function() {
     let table;
     
+    // Toggle password visibility
+    $(document).on('click', '.toggle-password-btn', function() {
+        const targetId = $(this).data('target');
+        const input = $('#' + targetId);
+        const icon = $(this).find('i');
+        
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+    
     // Inicializar DataTable
     function initDataTable() {
         table = $('#tableUsuarios').DataTable({

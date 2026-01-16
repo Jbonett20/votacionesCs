@@ -1,4 +1,19 @@
 $(document).ready(function() {
+    // Toggle password visibility
+    $('.toggle-password-btn').on('click', function() {
+        const targetId = $(this).data('target');
+        const input = $('#' + targetId);
+        const icon = $(this).find('i');
+        
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+    
     // Cambiar contraseña propia
     $('#formCambiarClave').on('submit', function(e) {
         e.preventDefault();
