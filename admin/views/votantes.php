@@ -48,9 +48,19 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5><i class="fas fa-list"></i> Lista de Votantes</h5>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalVotante">
-                        <i class="fas fa-plus"></i> Nuevo Votante
-                    </button>
+                    <div>
+                        <?php if (!$es_lider): ?>
+                        <button class="btn btn-success me-2" onclick="descargarPlantilla()">
+                            <i class="fas fa-download"></i> Descargar Plantilla
+                        </button>
+                        <button class="btn btn-warning me-2" data-bs-toggle="modal" data-bs-target="#modalImportar">
+                            <i class="fas fa-file-upload"></i> Importar Excel
+                        </button>
+                        <?php endif; ?>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalVotante">
+                            <i class="fas fa-plus"></i> Nuevo Votante
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -159,6 +169,52 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                         </button>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Importar -->
+    <div class="modal fade" id="modalImportar" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-upload"></i> Importar Votantes desde Excel
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formImportar" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Instrucciones:</h6>
+                            <ol class="mb-0">
+                                <li>Descarga la plantilla Excel usando el botón "Descargar Plantilla"</li>
+                                <li>Completa los datos de los votantes en el archivo</li>
+                                <li>Sube el archivo completado aquí</li>
+                                <li>El sistema validará duplicados y mostrará los resultados</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="archivo" class="form-label">Archivo Excel/CSV *</label>
+                            <input type="file" class="form-control" id="archivo" name="archivo" accept=".csv,.txt" required>
+                            <small class="text-muted">Formatos permitidos: .csv, .txt</small>
+                        </div>
+                        
+                        <div id="resultadoImportacion" class="mt-3" style="display: none;">
+                            <h6>Resultado de la Importación:</h6>
+                            <div id="mensajeImportacion"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cerrar
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="btnImportar">
+                            <i class="fas fa-upload"></i> Importar
                         </button>
                     </div>
                 </form>

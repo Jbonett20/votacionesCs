@@ -145,11 +145,21 @@ $nombre_usuario = $_SESSION['usuario_nombre'] ?? 'Usuario';
                         <div class="row" id="passwordFields">
                             <div class="col-md-6 mb-3">
                                 <label for="clave" class="form-label">Contraseña *</label>
-                                <input type="password" class="form-control" id="clave" name="clave">
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="clave" name="clave">
+                                    <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="clave">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="clave_confirm" class="form-label">Confirmar Contraseña *</label>
-                                <input type="password" class="form-control" id="clave_confirm" name="clave_confirm">
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="clave_confirm" name="clave_confirm">
+                                    <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="clave_confirm">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -183,11 +193,21 @@ $nombre_usuario = $_SESSION['usuario_nombre'] ?? 'Usuario';
                         
                         <div class="mb-3">
                             <label for="nueva_clave" class="form-label">Nueva Contraseña *</label>
-                            <input type="password" class="form-control" id="nueva_clave" name="nueva_clave" required minlength="6">
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="nueva_clave" name="nueva_clave" required minlength="6">
+                                <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="nueva_clave">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="nueva_clave_confirm" class="form-label">Confirmar Contraseña *</label>
-                            <input type="password" class="form-control" id="nueva_clave_confirm" required minlength="6">
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="nueva_clave_confirm" required minlength="6">
+                                <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="nueva_clave_confirm">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">

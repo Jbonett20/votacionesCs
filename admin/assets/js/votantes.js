@@ -281,3 +281,91 @@ $(document).ready(function() {
     cargarTiposIdentificacion();
     cargarLideres();
 });
+
+// Funciones globales fuera del document.ready
+
+function descargarPlantilla() {
+    window.location.href = '../controllers/exportar_controller.php?action=descargar_plantilla';
+}
+
+// Importar votantes
+$('#formImportar').on('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    formData.append('action', 'importar_votantes');
+    
+    const btnImportar = $('#btnImportar');
+    btnImportar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Importando...');
+    
+    $.ajax({
+        url: '../controllers/importar_controller.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(response) {
+            btnImportar.prop('disabled', false).html('<i class="fas fa-upload"></i> Importar');
+            
+            if (response.success) {
+                let mensaje = `<div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle"></i> ${response.message}</h6>
+                    <p><strong>${response.insertados}</strong> votantes importados exitosamente.</p>
+                </div>`;
+                
+                // Mostrar duplicados si existen
+                if (response.duplicados && response.duplicados.length > 0) {
+                    mensaje += `<div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Duplicados Encontrados (${response.duplicados.length})</h6>
+                        <ul class="mb-0" style="max-height: 200px; overflow-y: auto;">`;
+                    response.duplicados.forEach(dup => {
+                        mensaje += `<li>${dup}</li>`;
+                    });
+                    mensaje += `</ul></div>`;
+                }
+                
+                // Mostrar errores si existen
+                if (response.errores && response.errores.length > 0) {
+                    mensaje += `<div class="alert alert-danger">
+                        <h6><i class="fas fa-times-circle"></i> Errores (${response.errores.length})</h6>
+                        <ul class="mb-0" style="max-height: 200px; overflow-y: auto;">`;
+                    response.errores.forEach(err => {
+                        mensaje += `<li>${err}</li>`;
+                    });
+                    mensaje += `</ul></div>`;
+                }
+                
+                $('#mensajeImportacion').html(mensaje);
+                $('#resultadoImportacion').show();
+                $('#archivo').val('');
+                
+                // Recargar tabla si se importó algo
+                if (response.insertados > 0) {
+                    $('#tableVotantes').DataTable().ajax.reload();
+                }
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: response.message
+                });
+            }
+        },
+        error: function() {
+            btnImportar.prop('disabled', false).html('<i class="fas fa-upload"></i> Importar');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al procesar la importación'
+            });
+        }
+    });
+});
+
+// Limpiar resultado al cerrar modal
+$('#modalImportar').on('hidden.bs.modal', function() {
+    $('#formImportar')[0].reset();
+    $('#resultadoImportacion').hide();
+    $('#mensajeImportacion').html('');
+});

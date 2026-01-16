@@ -1,4 +1,5 @@
 <?php
+require_once '../config/db.php';
 require_once '../config/session.php';
 requerirSesion();
 
@@ -97,12 +98,30 @@ $nombre_completo = $usuario['nombres'] . ' ' . $usuario['apellidos'];
                     <div class="col-md-4">
                         <div class="profile-card text-center">
                             <div class="profile-avatar">
-                                <i class="fas fa-user"></i>
+                                <?php 
+                                // Icono según el rol
+                                if ($usuario['id_rol'] == 1) {
+                                    echo '<i class="fas fa-crown"></i>'; // SuperAdmin
+                                } elseif ($usuario['id_rol'] == 2) {
+                                    echo '<i class="fas fa-user-shield"></i>'; // Admin
+                                } else {
+                                    echo '<i class="fas fa-user-tie"></i>'; // Líder
+                                }
+                                ?>
                             </div>
                             <h3><?php echo htmlspecialchars($nombre_completo); ?></h3>
                             <p class="mb-2">
                                 <span class="role-badge bg-light text-dark">
-                                    <i class="fas fa-shield-alt"></i> <?php echo htmlspecialchars($usuario['nombre_rol']); ?>
+                                    <?php 
+                                    if ($usuario['id_rol'] == 1) {
+                                        echo '<i class="fas fa-crown"></i>';
+                                    } elseif ($usuario['id_rol'] == 2) {
+                                        echo '<i class="fas fa-user-shield"></i>';
+                                    } else {
+                                        echo '<i class="fas fa-user-tie"></i>';
+                                    }
+                                    echo ' ' . htmlspecialchars($usuario['nombre_rol']); 
+                                    ?>
                                 </span>
                             </p>
                             <p class="mb-0">
@@ -183,16 +202,31 @@ $nombre_completo = $usuario['nombres'] . ' ' . $usuario['apellidos'];
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="clave_actual" class="form-label">Contraseña Actual *</label>
-                            <input type="password" class="form-control" id="clave_actual" name="clave_actual" required>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="clave_actual" name="clave_actual" required>
+                                <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="clave_actual">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="nueva_clave" class="form-label">Nueva Contraseña *</label>
-                            <input type="password" class="form-control" id="nueva_clave" name="nueva_clave" required minlength="6">
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="nueva_clave" name="nueva_clave" required minlength="6">
+                                <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="nueva_clave">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                             <small class="text-muted">Mínimo 6 caracteres</small>
                         </div>
                         <div class="mb-3">
                             <label for="nueva_clave_confirm" class="form-label">Confirmar Nueva Contraseña *</label>
-                            <input type="password" class="form-control" id="nueva_clave_confirm" required minlength="6">
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="nueva_clave_confirm" required minlength="6">
+                                <button class="btn btn-outline-secondary toggle-password-btn" type="button" data-target="nueva_clave_confirm">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">

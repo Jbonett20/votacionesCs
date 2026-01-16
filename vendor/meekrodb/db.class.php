@@ -32,6 +32,9 @@ class DB {
                         PDO::ATTR_EMULATE_PREPARES => false
                     ]
                 );
+                // Forzar UTF-8 en la conexión
+                self::$connection->exec("SET NAMES utf8mb4");
+                self::$connection->exec("SET CHARACTER SET utf8mb4");
             } catch (PDOException $e) {
                 self::handleError(['error' => $e->getMessage(), 'query' => 'Connection']);
                 throw $e;

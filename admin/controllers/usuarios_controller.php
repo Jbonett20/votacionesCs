@@ -7,7 +7,7 @@
 require_once '../config/db.php';
 require_once '../config/session.php';
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 // Solo SuperAdmin puede gestionar usuarios
 requerirRol([1]);

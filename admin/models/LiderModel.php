@@ -80,35 +80,93 @@ class LiderModel {
     }
     
     /**
-     * Verificar si existe una identificación
+     * Verificar si existe una identificación y retornar información del cruce
      */
-    public static function identificacionExiste($identificacion, $excluir_id = null) {
+    public static function identificacionExiste($identificacion, $excluir_id = null, $tipo_excluir = 'lider') {
         // Verificar en lideres
-        if ($excluir_id) {
-            $existe_lideres = DB::queryOneValue(
-                "SELECT COUNT(*) FROM lideres WHERE identificacion = ? AND id_lider != ?",
+        if ($tipo_excluir == 'lider' && $excluir_id) {
+            $lider = DB::queryFirstRow(
+                "SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre, 
+                        CONCAT(u.nombres, ' ', u.apellidos) as administrador
+                 FROM lideres l
+                 LEFT JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
+                 WHERE l.identificacion = ? AND l.id_lider != ?",
                 $identificacion, $excluir_id
-            ) > 0;
+            );
         } else {
-            $existe_lideres = DB::queryOneValue(
-                "SELECT COUNT(*) FROM lideres WHERE identificacion = ?",
+            $lider = DB::queryFirstRow(
+                "SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre,
+                        CONCAT(u.nombres, ' ', u.apellidos) as administrador
+                 FROM lideres l
+                 LEFT JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
+                 WHERE l.identificacion = ?",
                 $identificacion
-            ) > 0;
+            );
+        }
+        
+        if ($lider) {
+            return [
+                'existe' => true,
+                'tipo' => 'líder',
+                'nombre' => $lider['nombre'],
+                'administrador' => $lider['administrador']
+            ];
         }
         
         // Verificar en usuarios
-        $existe_usuarios = DB::queryOneValue(
-            "SELECT COUNT(*) FROM usuarios WHERE identificacion = ?",
+        $usuario = DB::queryFirstRow(
+            "SELECT id_usuario, CONCAT(nombres, ' ', apellidos) as nombre, r.nombre_rol
+             FROM usuarios u
+             INNER JOIN roles r ON u.id_rol = r.id_rol
+             WHERE u.identificacion = ?",
             $identificacion
-        ) > 0;
+        );
+        
+        if ($usuario) {
+            return [
+                'existe' => true,
+                'tipo' => 'usuario',
+                'nombre' => $usuario['nombre'],
+                'rol' => $usuario['nombre_rol']
+            ];
+        }
         
         // Verificar en votantes
-        $existe_votantes = DB::queryOneValue(
-            "SELECT COUNT(*) FROM votantes WHERE identificacion = ?",
-            $identificacion
-        ) > 0;
+        if ($tipo_excluir == 'votante' && $excluir_id) {
+            $votante = DB::queryFirstRow(
+                "SELECT id_votante, CONCAT(v.nombres, ' ', v.apellidos) as nombre,
+                        CONCAT(l.nombres, ' ', l.apellidos) as lider,
+                        CONCAT(u.nombres, ' ', u.apellidos) as administrador
+                 FROM votantes v
+                 LEFT JOIN lideres l ON v.id_lider = l.id_lider
+                 LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+                 WHERE v.identificacion = ? AND v.id_votante != ?",
+                $identificacion, $excluir_id
+            );
+        } else {
+            $votante = DB::queryFirstRow(
+                "SELECT id_votante, CONCAT(v.nombres, ' ', v.apellidos) as nombre,
+                        CONCAT(l.nombres, ' ', l.apellidos) as lider,
+                        CONCAT(u.nombres, ' ', u.apellidos) as administrador
+                 FROM votantes v
+                 LEFT JOIN lideres l ON v.id_lider = l.id_lider
+                 LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+                 WHERE v.identificacion = ?",
+                $identificacion
+            );
+        }
         
-        return $existe_lideres || $existe_usuarios || $existe_votantes;
+        if ($votante) {
+            return [
+                'existe' => true,
+                'tipo' => 'votante',
+                'nombre' => $votante['nombre'],
+                'lider' => $votante['lider'],
+                'administrador' => $votante['administrador']
+            ];
+        }
+        
+        return ['existe' => false];
     }
     
     /**
