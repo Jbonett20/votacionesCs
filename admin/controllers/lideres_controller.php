@@ -6,6 +6,7 @@
 
 require_once '../config/db.php';
 require_once '../config/session.php';
+require_once '../models/LiderModel.php';
 
 header('Content-Type: application/json');
 
@@ -42,13 +43,10 @@ switch ($action) {
  */
 function listarLideres() {
     try {
-        $lideres = DB::queryAllRows(
-            "SELECT u.*, t.nombre_tipo 
-             FROM usuarios u
-             INNER JOIN tipos_identificacion t ON u.id_tipo_identificacion = t.id_tipo_identificacion
-             WHERE u.id_rol = 3
-             ORDER BY u.id_usuario DESC"
-        );
+        $usuario_id = $_SESSION['usuario_id'];
+        $usuario_rol = $_SESSION['usuario_rol'];
+        
+        $lideres = LiderModel::obtenerLideres($usuario_id, $usuario_rol);
         
         echo json_encode(['success' => true, 'data' => $lideres]);
     } catch (Exception $e) {
@@ -61,8 +59,8 @@ function listarLideres() {
  */
 function crearLider() {
     try {
-        // Validar campos requeridos
-        $campos = ['nombres', 'apellidos', 'identificacion', 'id_tipo_identificacion', 'sexo', 'usuario', 'clave'];
+        // Validar campos requeridos (sin usuario/clave ya que los líderes NO se loguean)
+        $campos = ['nombres', 'apellidos', 'identificacion', 'id_tipo_identificacion', 'sexo'];
         foreach ($campos as $campo) {
             if (empty($_POST[$campo])) {
                 echo json_encode(['success' => false, 'message' => 'Todos los campos son obligatorios']);
@@ -70,40 +68,26 @@ function crearLider() {
             }
         }
         
-        // Validar que el usuario no exista
-        $usuarioExiste = DB::queryOneValue("SELECT COUNT(*) FROM usuarios WHERE usuario = ?", $_POST['usuario']);
-        if ($usuarioExiste > 0) {
-            echo json_encode(['success' => false, 'message' => 'El usuario ya existe']);
-            return;
-        }
-        
         // Validar que la identificación no exista
-        $identificacionExiste = DB::queryOneValue("SELECT COUNT(*) FROM usuarios WHERE identificacion = ?", $_POST['identificacion']);
-        if ($identificacionExiste > 0) {
+        if (LiderModel::identificacionExiste($_POST['identificacion'])) {
             echo json_encode(['success' => false, 'message' => 'La identificación ya está registrada']);
             return;
         }
         
-        // Validar longitud de contraseña
-        if (strlen($_POST['clave']) < 6) {
-            echo json_encode(['success' => false, 'message' => 'La contraseña debe tener al menos 6 caracteres']);
-            return;
-        }
-        
-        // Insertar líder
+        // Insertar líder (sin usuario/clave)
         $datos = [
             'nombres' => trim($_POST['nombres']),
             'apellidos' => trim($_POST['apellidos']),
             'identificacion' => trim($_POST['identificacion']),
             'id_tipo_identificacion' => $_POST['id_tipo_identificacion'],
             'sexo' => $_POST['sexo'],
-            'usuario' => trim($_POST['usuario']),
-            'clave' => password_hash($_POST['clave'], PASSWORD_DEFAULT),
-            'id_rol' => 3, // Líder
+            'telefono' => trim($_POST['telefono'] ?? ''),
+            'direccion' => trim($_POST['direccion'] ?? ''),
+            'id_usuario_creador' => $_SESSION['usuario_id'],
             'id_estado' => 1 // Activo
         ];
         
-        $id = DB::insert('usuarios', $datos);
+        $id = LiderModel::crear($datos);
         
         echo json_encode([
             'success' => true, 
@@ -122,14 +106,22 @@ function crearLider() {
 function editarLider() {
     try {
         $id = $_POST['lider_id'] ?? 0;
+        $usuario_id = $_SESSION['usuario_id'];
+        $usuario_rol = $_SESSION['usuario_rol'];
         
         if (empty($id)) {
             echo json_encode(['success' => false, 'message' => 'ID de líder no válido']);
             return;
         }
         
-        // Validar campos requeridos
-        $campos = ['nombres', 'apellidos', 'identificacion', 'id_tipo_identificacion', 'sexo', 'usuario'];
+        // Admin solo puede editar sus líderes
+        if ($usuario_rol == 2 && !LiderModel::liderPerteneceAUsuario($id, $usuario_id)) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para editar este líder']);
+            return;
+        }
+        
+        // Validar campos requeridos (sin usuario/clave)
+        $campos = ['nombres', 'apellidos', 'identificacion', 'id_tipo_identificacion', 'sexo'];
         foreach ($campos as $campo) {
             if (empty($_POST[$campo])) {
                 echo json_encode(['success' => false, 'message' => 'Todos los campos son obligatorios']);
@@ -137,40 +129,25 @@ function editarLider() {
             }
         }
         
-        // Validar que el usuario no exista (excepto el actual)
-        $usuarioExiste = DB::queryOneValue(
-            "SELECT COUNT(*) FROM usuarios WHERE usuario = ? AND id_usuario != ?", 
-            $_POST['usuario'], 
-            $id
-        );
-        if ($usuarioExiste > 0) {
-            echo json_encode(['success' => false, 'message' => 'El usuario ya existe']);
-            return;
-        }
-        
         // Validar que la identificación no exista (excepto la actual)
-        $identificacionExiste = DB::queryOneValue(
-            "SELECT COUNT(*) FROM usuarios WHERE identificacion = ? AND id_usuario != ?", 
-            $_POST['identificacion'], 
-            $id
-        );
-        if ($identificacionExiste > 0) {
+        if (LiderModel::identificacionExiste($_POST['identificacion'], $id)) {
             echo json_encode(['success' => false, 'message' => 'La identificación ya está registrada']);
             return;
         }
         
-        // Actualizar líder
+        // Actualizar líder (sin usuario/clave)
         $datos = [
             'nombres' => trim($_POST['nombres']),
             'apellidos' => trim($_POST['apellidos']),
             'identificacion' => trim($_POST['identificacion']),
             'id_tipo_identificacion' => $_POST['id_tipo_identificacion'],
             'sexo' => $_POST['sexo'],
-            'usuario' => trim($_POST['usuario']),
+            'telefono' => trim($_POST['telefono'] ?? ''),
+            'direccion' => trim($_POST['direccion'] ?? ''),
             'id_estado' => $_POST['id_estado'] ?? 1
         ];
         
-        DB::update('usuarios', $datos, 'id_usuario = ?', $id);
+        LiderModel::actualizar($id, $datos);
         
         echo json_encode([
             'success' => true, 
@@ -188,14 +165,22 @@ function editarLider() {
 function eliminarLider() {
     try {
         $id = $_POST['id'] ?? 0;
+        $usuario_id = $_SESSION['usuario_id'];
+        $usuario_rol = $_SESSION['usuario_rol'];
         
         if (empty($id)) {
             echo json_encode(['success' => false, 'message' => 'ID de líder no válido']);
             return;
         }
         
+        // Admin solo puede eliminar sus líderes
+        if ($usuario_rol == 2 && !LiderModel::liderPerteneceAUsuario($id, $usuario_id)) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para eliminar este líder']);
+            return;
+        }
+        
         // Cambiar estado a inactivo
-        DB::update('usuarios', ['id_estado' => 2], 'id_usuario = ?', $id);
+        LiderModel::cambiarEstado($id, 2);
         
         echo json_encode([
             'success' => true, 
@@ -219,13 +204,17 @@ function obtenerLider() {
             return;
         }
         
-        $lider = DB::queryFirstRow(
-            "SELECT * FROM usuarios WHERE id_usuario = ? AND id_rol = 3",
-            $id
-        );
+        $lider = LiderModel::obtenerLiderPorId($id);
         
         if (!$lider) {
             echo json_encode(['success' => false, 'message' => 'Líder no encontrado']);
+            return;
+        }
+        
+        // Verificar permisos
+        $usuario_rol = $_SESSION['usuario_rol'];
+        if ($usuario_rol == 2 && $lider['id_usuario_creador'] != $_SESSION['usuario_id']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para ver este líder']);
             return;
         }
         

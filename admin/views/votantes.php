@@ -64,7 +64,7 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                                     <th>Tipo ID</th>
                                     <th>Sexo</th>
                                     <?php if (!$es_lider): ?>
-                                    <th>Líder</th>
+                                    <th>Líder / Admin</th>
                                     <?php endif; ?>
                                     <th>Estado</th>
                                     <th>Acciones</th>
@@ -128,16 +128,21 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                                     <option value="Otro">Otro</option>
                                 </select>
                             </div>
-                            
-                            <?php if (!$es_lider): ?>
                             <div class="col-md-6 mb-3">
-                                <label for="id_lider" class="form-label">Líder Responsable *</label>
-                                <select class="form-select" id="id_lider" name="id_lider" required>
-                                    <option value="">Seleccione...</option>
-                                    <option value="yo">Por mí (<?php echo htmlspecialchars($_SESSION['usuario_nombre']); ?>)</option>
-                                </select>
+                                <label for="telefono" class="form-label">Teléfono</label>
+                                <input type="text" class="form-control" id="telefono" name="telefono" placeholder="Opcional">
                             </div>
-                            <?php endif; ?>
+                        </div>
+                        
+                        <?php if (!$es_lider): ?>
+                        <div class="mb-3">
+                            <label for="id_lider" class="form-label">Líder Responsable *</label>
+                            <select class="form-select" id="id_lider" name="id_lider" required>
+                                <option value="">Seleccione...</option>
+                                <option value="yo">Por mí (<?php echo htmlspecialchars($_SESSION['usuario_nombre']); ?>)</option>
+                            </select>
+                        </div>
+                        <?php endif; ?>
                         </div>
                         
                         <div class="mb-3" id="estadoField" style="display: none;">
