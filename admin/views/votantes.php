@@ -200,8 +200,8 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                         
                         <div class="mb-3">
                             <label for="archivo" class="form-label">Archivo Excel/CSV *</label>
-                            <input type="file" class="form-control" id="archivo" name="archivo" accept=".csv,.txt" required>
-                            <small class="text-muted">Formatos permitidos: .csv, .txt</small>
+                            <input type="file" class="form-control" id="archivo" name="archivo" accept=".csv,.txt,.xlsx,.xls" required>
+                            <small class="text-muted">Formatos permitidos: .csv, .txt, .xlsx, .xls</small>
                         </div>
                         
                         <div id="resultadoImportacion" class="mt-3" style="display: none;">

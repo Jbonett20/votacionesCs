@@ -6,6 +6,10 @@
 
 require_once '../config/db.php';
 require_once '../config/session.php';
+require_once '../models/LiderModel.php';
+require_once '../../vendor/autoload.php';
+
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -31,34 +35,75 @@ function importarVotantes() {
         }
         
         $archivo = $_FILES['archivo']['tmp_name'];
-        $extension = pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION);
+        $extension = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
         
-        if (!in_array(strtolower($extension), ['csv', 'txt'])) {
-            echo json_encode(['success' => false, 'message' => 'Solo se permiten archivos CSV']);
+        if (!in_array($extension, ['csv', 'txt', 'xlsx', 'xls'])) {
+            echo json_encode(['success' => false, 'message' => 'Solo se permiten archivos CSV o Excel']);
             return;
         }
         
-        // Leer archivo
-        $handle = fopen($archivo, 'r');
-        if (!$handle) {
-            echo json_encode(['success' => false, 'message' => 'No se pudo abrir el archivo']);
-            return;
+        // Procesar archivo según tipo
+        $datos_archivo = [];
+        
+        if (in_array($extension, ['xlsx', 'xls'])) {
+            // Leer archivo Excel
+            try {
+                $spreadsheet = IOFactory::load($archivo);
+                $worksheet = $spreadsheet->getActiveSheet();
+                $datos_archivo = $worksheet->toArray();
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Error al leer archivo Excel: ' . $e->getMessage()]);
+                return;
+            }
+        } else {
+            // Leer archivo CSV
+            $handle = fopen($archivo, 'r');
+            if (!$handle) {
+                echo json_encode(['success' => false, 'message' => 'No se pudo abrir el archivo']);
+                return;
+            }
+            while (($linea = fgetcsv($handle, 1000, ';')) !== false) {
+                $datos_archivo[] = $linea;
+            }
+            fclose($handle);
         }
         
         // Buscar la línea de encabezados
         $headers = null;
-        $linea_num = 0;
-        while (($linea = fgetcsv($handle, 1000, ';')) !== false) {
-            $linea_num++;
-            // Buscar la línea que contiene "nombres"
-            if (isset($linea[0]) && strtolower(trim($linea[0])) === 'nombres') {
-                $headers = array_map('trim', array_map('strtolower', $linea));
-                break;
+        $linea_inicio = 0;
+        foreach ($datos_archivo as $index => $linea) {
+            // Filtrar valores nulos y vacíos
+            $linea_limpia = array_filter($linea, function($val) {
+                return $val !== null && trim($val) !== '';
+            });
+            
+            // Buscar "nombres" en cualquier posición de la fila
+            if (!empty($linea_limpia)) {
+                foreach ($linea as $celda) {
+                    if ($celda !== null) {
+                        // Limpiar BOM y espacios
+                        $celda_limpia = strtolower(trim(str_replace("\xEF\xBB\xBF", '', $celda)));
+                        if ($celda_limpia === 'nombres') {
+                            // Encontramos los encabezados, limpiar BOM y valores nulos
+                            $headers = [];
+                            foreach ($linea as $header) {
+                                if ($header !== null) {
+                                    // Remover BOM UTF-8 si existe
+                                    $header_limpio = str_replace("\xEF\xBB\xBF", '', $header);
+                                    $headers[] = strtolower(trim($header_limpio));
+                                } else {
+                                    $headers[] = '';
+                                }
+                            }
+                            $linea_inicio = $index + 1;
+                            break 2; // Salir de ambos loops
+                        }
+                    }
+                }
             }
         }
         
         if (!$headers) {
-            fclose($handle);
             echo json_encode(['success' => false, 'message' => 'No se encontraron encabezados válidos en el archivo']);
             return;
         }
@@ -68,7 +113,6 @@ function importarVotantes() {
         foreach ($columnas_requeridas as $col) {
             if (!in_array($col, $headers)) {
                 fclose($handle);
-                echo json_encode(['success' => false, 'message' => "Falta la columna requerida: $col"]);
                 return;
             }
         }
@@ -80,7 +124,7 @@ function importarVotantes() {
         $idx_tipo_id = array_search('tipo_id', $headers);
         $idx_telefono = array_search('telefono', $headers);
         $idx_sexo = array_search('sexo', $headers);
-        $idx_id_lider = array_search('id_lider', $headers);
+        $idx_identificacion_lider = array_search('identificacion_lider', $headers);
         
         $usuario_id = $_SESSION['usuario_id'];
         $insertados = 0;
@@ -88,8 +132,11 @@ function importarVotantes() {
         $duplicados = [];
         
         // Procesar datos
-        while (($datos = fgetcsv($handle, 1000, ';')) !== false) {
-            $linea_num++;
+        $linea_num = $linea_inicio;
+        
+        // Procesar datos desde el array
+        for ($i = $linea_inicio; $i < count($datos_archivo); $i++) {
+            $datos = $datos_archivo[$i];
             
             // Saltar líneas vacías
             if (empty(array_filter($datos))) {
@@ -103,7 +150,7 @@ function importarVotantes() {
             $tipo_id = trim($datos[$idx_tipo_id] ?? '');
             $telefono = trim($datos[$idx_telefono] ?? '');
             $sexo = strtoupper(trim($datos[$idx_sexo] ?? ''));
-            $id_lider = trim($datos[$idx_id_lider] ?? '');
+            $identificacion_lider = trim($datos[$idx_identificacion_lider] ?? '');
             
             // Validar campos obligatorios
             if (empty($nombres) || empty($apellidos) || empty($identificacion) || empty($tipo_id) || empty($sexo)) {
@@ -123,32 +170,58 @@ function importarVotantes() {
                 continue;
             }
             
-            // VALIDAR DUPLICADOS EN TODO EL SISTEMA
-            $existe_votante = DB::queryFirstRow("SELECT id_votante FROM votantes WHERE identificacion = ?", $identificacion);
-            $existe_lider = DB::queryFirstRow("SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE identificacion = ?", $identificacion);
+            // VALIDAR DUPLICADOS EN TODO EL SISTEMA CON INFORMACIÓN COMPLETA
+            $validacion = LiderModel::identificacionExiste($identificacion);
             
-            if ($existe_votante) {
-                $duplicados[] = "Línea $linea_num: Identificación $identificacion ya existe como votante";
-                continue;
-            }
-            
-            if ($existe_lider) {
-                $duplicados[] = "Línea $linea_num: Identificación $identificacion ya existe como líder ({$existe_lider['nombre']})";
+            if ($validacion['existe']) {
+                $mensaje_dup = "Línea $linea_num ($nombres $apellidos - $identificacion): Ya registrado como {$validacion['tipo']}: {$validacion['nombre']}";
+                
+                if ($validacion['tipo'] === 'votante') {
+                    if (!empty($validacion['lider'])) {
+                        $mensaje_dup .= " → Líder: {$validacion['lider']}";
+                        
+                        // Buscar el admin del líder
+                        $lider_info = DB::queryFirstRow(
+                            "SELECT CONCAT(u.nombres, ' ', u.apellidos) as admin 
+                             FROM lideres l
+                             INNER JOIN votantes v ON v.id_lider = l.id_lider
+                             LEFT JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
+                             WHERE v.identificacion = ?",
+                            $identificacion
+                        );
+                        if ($lider_info) {
+                            $mensaje_dup .= " (Admin del líder: {$lider_info['admin']})";
+                        }
+                    } elseif (!empty($validacion['administrador'])) {
+                        $mensaje_dup .= " → Administrador directo: {$validacion['administrador']}";
+                    }
+                } elseif ($validacion['tipo'] === 'líder') {
+                    if (!empty($validacion['administrador'])) {
+                        $mensaje_dup .= " → Creado por: {$validacion['administrador']}";
+                    }
+                } elseif ($validacion['tipo'] === 'usuario') {
+                    if (isset($validacion['rol'])) {
+                        $mensaje_dup .= " → Rol: {$validacion['rol']}";
+                    }
+                }
+                
+                $duplicados[] = $mensaje_dup;
                 continue;
             }
             
             // Validar líder si se especifica
+            $id_lider = null;
             $id_administrador_directo = null;
-            if (!empty($id_lider)) {
-                $lider = DB::queryFirstRow("SELECT id_lider FROM lideres WHERE id_lider = ? AND id_estado = 1", $id_lider);
+            
+            if (!empty($identificacion_lider)) {
+                $lider = DB::queryFirstRow("SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE identificacion = ? AND id_estado = 1", $identificacion_lider);
                 if (!$lider) {
-                    $errores[] = "Línea $linea_num: Líder ID $id_lider no existe";
+                    $errores[] = "Línea $linea_num: No se encontró líder con identificación $identificacion_lider";
                     continue;
                 }
-                $id_lider = (int)$id_lider;
+                $id_lider = (int)$lider['id_lider'];
             } else {
                 // Registro directo por admin
-                $id_lider = null;
                 $id_administrador_directo = $usuario_id;
             }
             
@@ -171,8 +244,6 @@ function importarVotantes() {
                 $errores[] = "Línea $linea_num: Error al insertar - " . $e->getMessage();
             }
         }
-        
-        fclose($handle);
         
         // Preparar respuesta
         $mensaje = "Proceso completado. ";

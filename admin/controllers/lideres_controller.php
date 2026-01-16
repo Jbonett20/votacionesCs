@@ -71,14 +71,20 @@ function crearLider() {
         // Validar que la identificación no exista
         $validacion = LiderModel::identificacionExiste($_POST['identificacion']);
         if ($validacion['existe']) {
-            $mensaje = "La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
-            if (isset($validacion['administrador'])) {
-                $mensaje .= " (Administrador: {$validacion['administrador']})";
-            } elseif (isset($validacion['rol'])) {
-                $mensaje .= " ({$validacion['rol']})";
-            } elseif (isset($validacion['lider'])) {
-                $mensaje .= " (Líder: {$validacion['lider']})";
+            $mensaje = "⚠️ La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
+            
+            if ($validacion['tipo'] === 'líder' && isset($validacion['administrador'])) {
+                $mensaje .= " → Creado por administrador: {$validacion['administrador']}";
+            } elseif ($validacion['tipo'] === 'votante') {
+                if (isset($validacion['lider']) && $validacion['lider']) {
+                    $mensaje .= " → Pertenece al líder: {$validacion['lider']}";
+                } elseif (isset($validacion['administrador']) && $validacion['administrador']) {
+                    $mensaje .= " → Registrado directamente por: {$validacion['administrador']}";
+                }
+            } elseif ($validacion['tipo'] === 'usuario' && isset($validacion['rol'])) {
+                $mensaje .= " → Rol: {$validacion['rol']}";
             }
+            
             echo json_encode(['success' => false, 'message' => $mensaje]);
             return;
         }
@@ -141,14 +147,20 @@ function editarLider() {
         // Validar que la identificación no exista (excepto la actual)
         $validacion = LiderModel::identificacionExiste($_POST['identificacion'], $id);
         if ($validacion['existe']) {
-            $mensaje = "La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
-            if (isset($validacion['administrador'])) {
-                $mensaje .= " (Administrador: {$validacion['administrador']})";
-            } elseif (isset($validacion['rol'])) {
-                $mensaje .= " ({$validacion['rol']})";
-            } elseif (isset($validacion['lider'])) {
-                $mensaje .= " (Líder: {$validacion['lider']})";
+            $mensaje = "⚠️ La identificación ya está registrada como {$validacion['tipo']}: {$validacion['nombre']}";
+            
+            if ($validacion['tipo'] === 'líder' && isset($validacion['administrador'])) {
+                $mensaje .= " → Creado por administrador: {$validacion['administrador']}";
+            } elseif ($validacion['tipo'] === 'votante') {
+                if (isset($validacion['lider']) && $validacion['lider']) {
+                    $mensaje .= " → Pertenece al líder: {$validacion['lider']}";
+                } elseif (isset($validacion['administrador']) && $validacion['administrador']) {
+                    $mensaje .= " → Registrado directamente por: {$validacion['administrador']}";
+                }
+            } elseif ($validacion['tipo'] === 'usuario' && isset($validacion['rol'])) {
+                $mensaje .= " → Rol: {$validacion['rol']}";
             }
+            
             echo json_encode(['success' => false, 'message' => $mensaje]);
             return;
         }
