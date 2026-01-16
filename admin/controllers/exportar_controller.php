@@ -224,25 +224,11 @@ function descargarPlantilla() {
     $output = fopen('php://output', 'w');
     fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
     
-    // Instrucciones
-    fputcsv($output, ['PLANTILLA PARA CARGA MASIVA DE VOTANTES'], ';');
-    fputcsv($output, [''], ';');
-    fputcsv($output, ['INSTRUCCIONES:'], ';');
-    fputcsv($output, ['1. Complete los datos en las columnas correspondientes'], ';');
-    fputcsv($output, ['2. NO modifique ni elimine la fila de encabezados'], ';');
-    fputcsv($output, ['3. Tipo ID: 1=Cédula, 2=Tarjeta Identidad, 3=Pasaporte, 4=Otro'], ';');
-    fputcsv($output, ['4. Sexo: M=Masculino, F=Femenino, O=Otro'], ';');
-    fputcsv($output, ['5. ID Líder: Dejar vacío para registro directo (opcional)'], ';');
-    fputcsv($output, ['6. Teléfono es opcional'], ';');
-    fputcsv($output, [''], ';');
-    fputcsv($output, ['--- ELIMINE ESTAS LÍNEAS Y COMPLETE A PARTIR DE AQUÍ ---'], ';');
-    fputcsv($output, [''], ';');
-    
     // Encabezados
-    fputcsv($output, ['nombres', 'apellidos', 'identificacion', 'tipo_id', 'telefono', 'sexo', 'id_lider'], ';');
+    fputcsv($output, ['nombres', 'apellidos', 'identificacion', 'tipo_id', 'telefono', 'sexo', 'identificacion_lider'], ';');
     
     // Ejemplos
-    fputcsv($output, ['Juan', 'Pérez González', '1234567890', '1', '3101234567', 'M', '1'], ';');
+    fputcsv($output, ['Juan', 'Pérez González', '1234567890', '1', '3101234567', 'M', ''], ';');
     fputcsv($output, ['María', 'López Martínez', '0987654321', '1', '3109876543', 'F', ''], ';');
     
     fclose($output);

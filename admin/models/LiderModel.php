@@ -86,7 +86,7 @@ class LiderModel {
         // Verificar en lideres
         if ($tipo_excluir == 'lider' && $excluir_id) {
             $lider = DB::queryFirstRow(
-                "SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre, 
+                "SELECT l.id_lider, CONCAT(l.nombres, ' ', l.apellidos) as nombre, 
                         CONCAT(u.nombres, ' ', u.apellidos) as administrador
                  FROM lideres l
                  LEFT JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
@@ -95,7 +95,7 @@ class LiderModel {
             );
         } else {
             $lider = DB::queryFirstRow(
-                "SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre,
+                "SELECT l.id_lider, CONCAT(l.nombres, ' ', l.apellidos) as nombre,
                         CONCAT(u.nombres, ' ', u.apellidos) as administrador
                  FROM lideres l
                  LEFT JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
@@ -115,7 +115,7 @@ class LiderModel {
         
         // Verificar en usuarios
         $usuario = DB::queryFirstRow(
-            "SELECT id_usuario, CONCAT(nombres, ' ', apellidos) as nombre, r.nombre_rol
+            "SELECT u.id_usuario, CONCAT(u.nombres, ' ', u.apellidos) as nombre, r.nombre_rol
              FROM usuarios u
              INNER JOIN roles r ON u.id_rol = r.id_rol
              WHERE u.identificacion = ?",
