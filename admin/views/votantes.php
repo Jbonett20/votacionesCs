@@ -73,6 +73,7 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                                     <th>Identificación</th>
                                     <th>Tipo ID</th>
                                     <th>Sexo</th>
+                                    <th>Mesa</th>
                                     <?php if (!$es_lider): ?>
                                     <th>Líder / Admin</th>
                                     <?php endif; ?>
@@ -103,6 +104,7 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                         <input type="hidden" id="votante_id" name="votante_id">
                         <input type="hidden" id="action" name="action" value="crear">
                         <input type="hidden" id="es_lider" value="<?php echo $es_lider ? '1' : '0'; ?>">
+                        <input type="hidden" id="usuario_nombre_actual" value="<?php echo htmlspecialchars($_SESSION['usuario_nombre'] ?? ''); ?>">
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -141,6 +143,13 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                             <div class="col-md-6 mb-3">
                                 <label for="telefono" class="form-label">Teléfono</label>
                                 <input type="text" class="form-control" id="telefono" name="telefono" placeholder="Opcional">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="mesa" class="form-label">Mesa</label>
+                                <input type="number" class="form-control" id="mesa" name="mesa" placeholder="Opcional" min="1">
                             </div>
                         </div>
                         

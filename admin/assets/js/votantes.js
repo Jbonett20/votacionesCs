@@ -16,6 +16,12 @@ $(document).ready(function() {
             render: function(data) {
                 return data === 'M' ? 'Masculino' : (data === 'F' ? 'Femenino' : 'Otro');
             }
+        },
+        { 
+            data: 'mesa',
+            render: function(data) {
+                return data ? data : 0;
+            }
         }
     ];
     
@@ -100,6 +106,7 @@ $(document).ready(function() {
     // Cargar líderes (solo para admin)
     function cargarLideres() {
         if (!esLider) {
+            const usuarioNombre = $('#usuario_nombre_actual').val();
             $.ajax({
                 url: '../controllers/votantes_controller.php',
                 type: 'POST',
@@ -108,18 +115,24 @@ $(document).ready(function() {
                 success: function(response) {
                     if (response.success) {
                         let options = '<option value="">Seleccione...</option>';
-                        options += '<option value="yo">Por mí (<?php echo htmlspecialchars($_SESSION["usuario_nombre"] ?? ""); ?>)</option>';
+                        options += `<option value="yo">Por mí (${usuarioNombre})</option>`;
                         response.data.forEach(function(lider) {
                             options += `<option value="${lider.id_lider}">${lider.nombres} ${lider.apellidos}</option>`;
                         });
                         $('#id_lider').html(options);
+                        
+                        // Destruir Select2 anterior si existe
+                        if ($('#id_lider').hasClass('select2-hidden-accessible')) {
+                            $('#id_lider').select2('destroy');
+                        }
                         
                         // Inicializar Select2
                         $('#id_lider').select2({
                             theme: 'bootstrap-5',
                             dropdownParent: $('#modalVotante'),
                             placeholder: 'Seleccione un líder',
-                            allowClear: true
+                            allowClear: true,
+                            width: '100%'
                         });
                     }
                 }
@@ -136,7 +149,10 @@ $(document).ready(function() {
         $('#estadoField').hide();
         
         if (!esLider) {
-            $('#id_lider').val('').trigger('change');
+            // Limpiar Select2 correctamente
+            if ($('#id_lider').hasClass('select2-hidden-accessible')) {
+                $('#id_lider').val('').trigger('change');
+            }
         } else {
             // Si es líder, quitar el required del campo id_lider si existe
             $('#id_lider').removeAttr('required');
@@ -229,10 +245,17 @@ $(document).ready(function() {
                     $('#identificacion').val(votante.identificacion);
                     $('#sexo').val(votante.sexo);
                     $('#telefono').val(votante.telefono || '');
+                    $('#mesa').val(votante.mesa || '');
                     $('#id_estado').val(votante.id_estado);
                     
                     if (!esLider) {
-                        $('#id_lider').val(votante.id_lider).trigger('change');
+                        // Si tiene líder asignado, seleccionarlo; si no, seleccionar "Por mí"
+                        if (votante.id_lider && votante.id_lider !== null && votante.id_lider !== '') {
+                            $('#id_lider').val(votante.id_lider).trigger('change');
+                        } else {
+                            // Si no tiene líder (registrado por admin directo), seleccionar "Por mí"
+                            $('#id_lider').val('yo').trigger('change');
+                        }
                     }
                     
                     $('#modalTitleText').text('Editar Votante');
