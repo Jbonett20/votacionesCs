@@ -124,6 +124,7 @@ function importarVotantes() {
         $idx_tipo_id = array_search('tipo_id', $headers);
         $idx_telefono = array_search('telefono', $headers);
         $idx_sexo = array_search('sexo', $headers);
+        $idx_mesa = array_search('mesa', $headers);
         $idx_identificacion_lider = array_search('identificacion_lider', $headers);
         
         $usuario_id = $_SESSION['usuario_id'];
@@ -150,6 +151,7 @@ function importarVotantes() {
             $tipo_id = trim($datos[$idx_tipo_id] ?? '');
             $telefono = trim($datos[$idx_telefono] ?? '');
             $sexo = strtoupper(trim($datos[$idx_sexo] ?? ''));
+            $mesa = $idx_mesa !== false ? trim($datos[$idx_mesa] ?? '') : '';
             $identificacion_lider = trim($datos[$idx_identificacion_lider] ?? '');
             
             // Validar campos obligatorios
@@ -234,6 +236,7 @@ function importarVotantes() {
                     'id_tipo_identificacion' => (int)$tipo_id,
                     'telefono' => $telefono ?: null,
                     'sexo' => $sexo,
+                    'mesa' => !empty($mesa) ? (int)$mesa : 0,
                     'id_lider' => $id_lider,
                     'id_administrador_directo' => $id_administrador_directo,
                     'id_usuario_creador' => $usuario_id,

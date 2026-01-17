@@ -89,7 +89,8 @@ function listarVotantes() {
             $votantes = DB::queryAllRows(
                 "SELECT v.*, t.nombre_tipo, 
                         l.nombres as lider_nombres, l.apellidos as lider_apellidos,
-                        CONCAT(u.nombres, ' ', u.apellidos) as admin_directo
+                        CONCAT(u.nombres, ' ', u.apellidos) as admin_directo,
+                        v.mesa
                  FROM votantes v
                  INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
                  LEFT JOIN lideres l ON v.id_lider = l.id_lider
@@ -188,6 +189,7 @@ function crearVotante() {
             'id_tipo_identificacion' => $_POST['id_tipo_identificacion'],
             'sexo' => $_POST['sexo'],
             'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
+            'mesa' => !empty($_POST['mesa']) ? intval($_POST['mesa']) : 0, // Por defecto 0
             'id_lider' => $id_lider, // Puede ser NULL
             'id_administrador_directo' => $id_administrador_directo, // Puede ser NULL
             'id_usuario_creador' => $usuario_id, // Usuario que crea el registro
@@ -213,6 +215,8 @@ function crearVotante() {
 function editarVotante() {
     try {
         $id = $_POST['votante_id'] ?? 0;
+        $usuario_id = $_SESSION['usuario_id'];
+        $usuario_rol = $_SESSION['usuario_rol'];
         
         if (empty($id)) {
             echo json_encode(['success' => false, 'message' => 'ID de votante no válido']);
@@ -220,7 +224,6 @@ function editarVotante() {
         }
         
         // Validar permisos (líder solo puede editar sus votantes)
-        $usuario_rol = $_SESSION['usuario_rol'];
         if ($usuario_rol == 3) {
             $votante = DB::queryFirstRow(
                 "SELECT * FROM votantes WHERE id_votante = ? AND id_lider = ?",
@@ -274,6 +277,7 @@ function editarVotante() {
             'id_tipo_identificacion' => $_POST['id_tipo_identificacion'],
             'sexo' => $_POST['sexo'],
             'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
+            'mesa' => !empty($_POST['mesa']) ? intval($_POST['mesa']) : 0, // Por defecto 0
             'id_estado' => $_POST['id_estado'] ?? 1
         ];
         
@@ -281,9 +285,17 @@ function editarVotante() {
         if ($usuario_rol != 3 && isset($_POST['id_lider'])) {
             $id_lider_post = $_POST['id_lider'];
             if ($id_lider_post === 'actual' || $id_lider_post === 'yo') {
-                $datos['id_lider'] = $_SESSION['usuario_id'];
-            } else {
+                // Registrar por mí (sin líder, directamente por el admin)
+                $datos['id_lider'] = null;
+                $datos['id_administrador_directo'] = $usuario_id;
+            } else if (!empty($id_lider_post)) {
+                // Asignar a un líder específico
                 $datos['id_lider'] = $id_lider_post;
+                $datos['id_administrador_directo'] = null;
+            } else {
+                // Sin líder, registrado directamente por admin
+                $datos['id_lider'] = null;
+                $datos['id_administrador_directo'] = $usuario_id;
             }
         }
         
