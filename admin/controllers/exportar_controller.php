@@ -226,11 +226,11 @@ function descargarPlantilla() {
     fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
     
     // Encabezados
-    fputcsv($output, ['nombres', 'apellidos', 'identificacion', 'tipo_id', 'telefono', 'sexo', 'mesa', 'identificacion_lider'], ';');
+    fputcsv($output, ['nombres', 'apellidos', 'identificacion', 'telefono', 'mesa', 'identificacion_lider'], ';');
     
     // Ejemplos
-    fputcsv($output, ['Juan', 'Pérez González', '1234567890', '1', '3101234567', 'M', '1', ''], ';');
-    fputcsv($output, ['María', 'López Martínez', '0987654321', '1', '3109876543', 'F', '0', ''], ';');
+    fputcsv($output, ['Juan', 'Pérez González', '1234567890', '3101234567', '1', ''], ';');
+    fputcsv($output, ['María', 'López Martínez', '0987654321', '3109876543', '0', ''], ';');
     
     fclose($output);
     exit;

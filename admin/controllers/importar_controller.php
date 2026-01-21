@@ -109,21 +109,31 @@ function importarVotantes() {
         }
         
         // Validar columnas requeridas
-        $columnas_requeridas = ['nombres', 'apellidos', 'identificacion', 'tipo_id', 'sexo'];
+        $columnas_requeridas = ['nombres', 'apellidos', 'identificacion'];
+        $columnas_faltantes = [];
         foreach ($columnas_requeridas as $col) {
             if (!in_array($col, $headers)) {
-                fclose($handle);
-                return;
+                $columnas_faltantes[] = $col;
             }
+        }
+        
+        if (!empty($columnas_faltantes)) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'ERROR: Faltan columnas obligatorias en el archivo Excel',
+                'detalles' => 'Columnas faltantes: ' . implode(', ', $columnas_faltantes),
+                'columnas_encontradas' => implode(', ', array_filter($headers)),
+                'columnas_requeridas' => 'nombres, apellidos, identificacion',
+                'columnas_opcionales' => 'telefono, mesa, identificacion_lider'
+            ]);
+            return;
         }
         
         // Obtener índices de columnas
         $idx_nombres = array_search('nombres', $headers);
         $idx_apellidos = array_search('apellidos', $headers);
         $idx_identificacion = array_search('identificacion', $headers);
-        $idx_tipo_id = array_search('tipo_id', $headers);
         $idx_telefono = array_search('telefono', $headers);
-        $idx_sexo = array_search('sexo', $headers);
         $idx_mesa = array_search('mesa', $headers);
         $idx_identificacion_lider = array_search('identificacion_lider', $headers);
         
@@ -148,27 +158,33 @@ function importarVotantes() {
             $nombres = trim($datos[$idx_nombres] ?? '');
             $apellidos = trim($datos[$idx_apellidos] ?? '');
             $identificacion = trim($datos[$idx_identificacion] ?? '');
-            $tipo_id = trim($datos[$idx_tipo_id] ?? '');
             $telefono = trim($datos[$idx_telefono] ?? '');
-            $sexo = strtoupper(trim($datos[$idx_sexo] ?? ''));
             $mesa = $idx_mesa !== false ? trim($datos[$idx_mesa] ?? '') : '';
             $identificacion_lider = trim($datos[$idx_identificacion_lider] ?? '');
             
             // Validar campos obligatorios
-            if (empty($nombres) || empty($apellidos) || empty($identificacion) || empty($tipo_id) || empty($sexo)) {
-                $errores[] = "Línea $linea_num: Faltan datos obligatorios";
+            $campos_faltantes = [];
+            if (empty($nombres)) $campos_faltantes[] = 'nombres';
+            if (empty($apellidos)) $campos_faltantes[] = 'apellidos';
+            if (empty($identificacion)) $campos_faltantes[] = 'identificacion';
+            
+            if (!empty($campos_faltantes)) {
+                $errores[] = "Línea $linea_num: Faltan campos obligatorios → " . implode(', ', $campos_faltantes) . " | Datos actuales: Nombres='$nombres', Apellidos='$apellidos', Identificación='$identificacion'";
+                $linea_num++;
                 continue;
             }
             
-            // Validar sexo
-            if (!in_array($sexo, ['M', 'F', 'O'])) {
-                $errores[] = "Línea $linea_num: Sexo inválido (debe ser M, F o O)";
+            // Validar que la identificación sea numérica
+            if (!is_numeric($identificacion)) {
+                $errores[] = "Línea $linea_num: La identificación '$identificacion' no es válida (debe contener solo números) | Votante: $nombres $apellidos";
+                $linea_num++;
                 continue;
             }
             
-            // Validar tipo_id
-            if (!in_array($tipo_id, ['1', '2', '3', '4'])) {
-                $errores[] = "Línea $linea_num: Tipo de identificación inválido";
+            // Validar longitud de identificación
+            if (strlen($identificacion) < 6 || strlen($identificacion) > 12) {
+                $errores[] = "Línea $linea_num: La identificación '$identificacion' tiene longitud inválida (debe tener entre 6 y 12 dígitos) | Votante: $nombres $apellidos";
+                $linea_num++;
                 continue;
             }
             
@@ -178,9 +194,11 @@ function importarVotantes() {
             if ($validacion['existe']) {
                 $mensaje_dup = "Línea $linea_num ($nombres $apellidos - $identificacion): Ya registrado como {$validacion['tipo']}: {$validacion['nombre']}";
                 
+                $detalles_existente = '';
                 if ($validacion['tipo'] === 'votante') {
                     if (!empty($validacion['lider'])) {
                         $mensaje_dup .= " → Líder: {$validacion['lider']}";
+                        $detalles_existente .= "Líder: {$validacion['lider']}";
                         
                         // Buscar el admin del líder
                         $lider_info = DB::queryFirstRow(
@@ -193,18 +211,82 @@ function importarVotantes() {
                         );
                         if ($lider_info) {
                             $mensaje_dup .= " (Admin del líder: {$lider_info['admin']})";
+                            $detalles_existente .= " | Admin del líder: {$lider_info['admin']}";
                         }
                     } elseif (!empty($validacion['administrador'])) {
                         $mensaje_dup .= " → Administrador directo: {$validacion['administrador']}";
+                        $detalles_existente .= "Administrador directo: {$validacion['administrador']}";
                     }
                 } elseif ($validacion['tipo'] === 'líder') {
                     if (!empty($validacion['administrador'])) {
                         $mensaje_dup .= " → Creado por: {$validacion['administrador']}";
+                        $detalles_existente .= "Creado por: {$validacion['administrador']}";
                     }
                 } elseif ($validacion['tipo'] === 'usuario') {
                     if (isset($validacion['rol'])) {
                         $mensaje_dup .= " → Rol: {$validacion['rol']}";
+                        $detalles_existente .= "Rol: {$validacion['rol']}";
                     }
+                }
+                
+                // GUARDAR O ACTUALIZAR EN TABLA DE DUPLICADOS
+                try {
+                    // Obtener nombre completo del usuario desde la base de datos
+                    $usuario_info = DB::queryFirstRow(
+                        "SELECT CONCAT(nombres, ' ', apellidos) as nombre_completo FROM usuarios WHERE id_usuario = ?",
+                        $usuario_id
+                    );
+                    $nombre_completo_usuario = $usuario_info ? $usuario_info['nombre_completo'] : ($_SESSION['usuario'] ?? 'Usuario');
+                    
+                    // Agregar información del líder si existe
+                    $nombre_usuario_intento_completo = $nombre_completo_usuario;
+                    if (!empty($identificacion_lider)) {
+                        $lider = DB::queryFirstRow(
+                            "SELECT CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE identificacion = ?",
+                            $identificacion_lider
+                        );
+                        if ($lider) {
+                            $nombre_usuario_intento_completo .= ', Líder: ' . $lider['nombre'];
+                        }
+                    } else {
+                        // Registrado directamente por el admin
+                        $nombre_usuario_intento_completo .= ' (Registro directo)';
+                    }
+                    
+                    // Verificar si ya existe un registro con esta identificación
+                    $duplicado_existente = DB::queryFirstRow(
+                        "SELECT id_duplicado, nombre_usuario_intento FROM votantes_duplicados WHERE identificacion = ?",
+                        $identificacion
+                    );
+                    
+                    if ($duplicado_existente) {
+                        // Actualizar agregando el nuevo intento
+                        $nombres_acumulados = $duplicado_existente['nombre_usuario_intento'] . ' | ' . $nombre_usuario_intento_completo;
+                        
+                        DB::update('votantes_duplicados', [
+                            'nombre_usuario_intento' => $nombres_acumulados,
+                            'fecha_intento' => DB::sqleval('NOW()')
+                        ], 'id_duplicado=%i', $duplicado_existente['id_duplicado']);
+                    } else {
+                        // Insertar nuevo registro
+                        DB::insert('votantes_duplicados', [
+                            'nombres' => $nombres,
+                            'apellidos' => $apellidos,
+                            'identificacion' => $identificacion,
+                            'telefono' => $telefono ?: null,
+                            'mesa' => !empty($mesa) ? (int)$mesa : 0,
+                            'tipo_existente' => $validacion['tipo'],
+                            'nombre_existente' => $validacion['nombre'],
+                            'detalles_existente' => $detalles_existente,
+                            'metodo_intento' => 'excel',
+                            'identificacion_lider_intento' => $identificacion_lider ?: null,
+                            'id_usuario_intento' => $usuario_id,
+                            'nombre_usuario_intento' => $nombre_usuario_intento_completo
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    // Si falla al guardar duplicado, continuar sin detener el proceso
+                    error_log("Error al guardar duplicado: " . $e->getMessage());
                 }
                 
                 $duplicados[] = $mensaje_dup;
@@ -218,7 +300,8 @@ function importarVotantes() {
             if (!empty($identificacion_lider)) {
                 $lider = DB::queryFirstRow("SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE identificacion = ? AND id_estado = 1", $identificacion_lider);
                 if (!$lider) {
-                    $errores[] = "Línea $linea_num: No se encontró líder con identificación $identificacion_lider";
+                    $errores[] = "Línea $linea_num: ERROR - Líder no encontrado | Identificación líder buscada: '$identificacion_lider' | Votante: $nombres $apellidos (ID: $identificacion) | Solución: Verifique que el líder esté registrado en el sistema o deje el campo 'identificacion_lider' vacío para asignación directa";
+                    $linea_num++;
                     continue;
                 }
                 $id_lider = (int)$lider['id_lider'];
@@ -233,9 +316,9 @@ function importarVotantes() {
                     'nombres' => $nombres,
                     'apellidos' => $apellidos,
                     'identificacion' => $identificacion,
-                    'id_tipo_identificacion' => (int)$tipo_id,
+                    'id_tipo_identificacion' => 1, // Tipo por defecto: Cédula de Ciudadanía
                     'telefono' => $telefono ?: null,
-                    'sexo' => $sexo,
+                    'sexo' => 'O', // Sexo por defecto: Otro
                     'mesa' => !empty($mesa) ? (int)$mesa : 0,
                     'id_lider' => $id_lider,
                     'id_administrador_directo' => $id_administrador_directo,
@@ -244,8 +327,15 @@ function importarVotantes() {
                 ]);
                 $insertados++;
             } catch (Exception $e) {
-                $errores[] = "Línea $linea_num: Error al insertar - " . $e->getMessage();
+                $error_msg = $e->getMessage();
+                if (strpos($error_msg, 'Duplicate entry') !== false) {
+                    $errores[] = "Línea $linea_num: ERROR DE DUPLICADO EN BASE DE DATOS | Votante: $nombres $apellidos | Identificación: $identificacion | Causa: Este registro ya existe en la base de datos (posible error de validación previa)";
+                } else {
+                    $errores[] = "Línea $linea_num: ERROR DE BASE DE DATOS | Votante: $nombres $apellidos | Identificación: $identificacion | Detalles técnicos: $error_msg";
+                }
             }
+            
+            $linea_num++;
         }
         
         // Preparar respuesta
