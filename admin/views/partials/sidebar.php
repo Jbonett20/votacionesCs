@@ -32,6 +32,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
         <?php endif; ?>
         
+        <a href="duplicados.php" class="menu-item <?php echo ($current_page == 'duplicados.php') ? 'active' : ''; ?>">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>Votantes Duplicados</span>
+        </a>
+        
         <a href="reportes.php" class="menu-item <?php echo ($current_page == 'reportes.php') ? 'active' : ''; ?>">
             <i class="fas fa-chart-bar"></i>
             <span>Reportes</span>

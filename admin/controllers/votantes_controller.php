@@ -165,16 +165,85 @@ function crearVotante() {
             $mensaje .= "<strong>Tipo:</strong> {$validacion['tipo']}<br>";
             $mensaje .= "<strong>Nombre:</strong> {$validacion['nombre']}<br>";
             
+            $detalles_existente = '';
+            
             if ($validacion['tipo'] === 'líder' && isset($validacion['administrador'])) {
                 $mensaje .= "<strong>Creado por:</strong> {$validacion['administrador']}";
+                $detalles_existente = "Creado por: {$validacion['administrador']}";
             } elseif ($validacion['tipo'] === 'votante') {
                 if (isset($validacion['lider']) && $validacion['lider']) {
                     $mensaje .= "<strong>Pertenece al líder:</strong> {$validacion['lider']}";
+                    $detalles_existente = "Pertenece al líder: {$validacion['lider']}";
                 } elseif (isset($validacion['administrador']) && $validacion['administrador']) {
                     $mensaje .= "<strong>Registrado por:</strong> {$validacion['administrador']}";
+                    $detalles_existente = "Registrado por: {$validacion['administrador']}";
                 }
             } elseif ($validacion['tipo'] === 'usuario' && isset($validacion['rol'])) {
                 $mensaje .= "<strong>Rol:</strong> {$validacion['rol']}";
+                $detalles_existente = "Rol: {$validacion['rol']}";
+            }
+            
+            // GUARDAR O ACTUALIZAR EN TABLA DE DUPLICADOS
+            try {
+                // Obtener nombre completo del usuario desde la base de datos
+                $usuario_info = DB::queryFirstRow(
+                    "SELECT CONCAT(nombres, ' ', apellidos) as nombre_completo FROM usuarios WHERE id_usuario = ?",
+                    $usuario_id
+                );
+                $nombre_completo_usuario = $usuario_info ? $usuario_info['nombre_completo'] : ($_SESSION['usuario'] ?? 'Usuario');
+                
+                // Agregar información del líder o admin
+                $nombre_usuario_intento_completo = $nombre_completo_usuario;
+                $id_lider_post = $_POST['id_lider'] ?? '';
+                
+                if (!empty($id_lider_post) && $id_lider_post !== 'actual' && $id_lider_post !== 'yo') {
+                    // Seleccionó un líder específico
+                    $lider = DB::queryFirstRow(
+                        "SELECT CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE id_lider = ?",
+                        $id_lider_post
+                    );
+                    if ($lider) {
+                        $nombre_usuario_intento_completo .= ', Líder: ' . $lider['nombre'];
+                    }
+                } else {
+                    // Registrado directamente por el admin/usuario actual
+                    $nombre_usuario_intento_completo .= ' (Registro directo)';
+                }
+                
+                // Verificar si ya existe un registro con esta identificación
+                $duplicado_existente = DB::queryFirstRow(
+                    "SELECT id_duplicado, nombre_usuario_intento FROM votantes_duplicados WHERE identificacion = ?",
+                    trim($_POST['identificacion'])
+                );
+                
+                if ($duplicado_existente) {
+                    // Actualizar agregando el nuevo intento
+                    $nombres_acumulados = $duplicado_existente['nombre_usuario_intento'] . ' | ' . $nombre_usuario_intento_completo;
+                    
+                    DB::update('votantes_duplicados', [
+                        'nombre_usuario_intento' => $nombres_acumulados,
+                        'fecha_intento' => DB::sqleval('NOW()')
+                    ], 'id_duplicado=%i', $duplicado_existente['id_duplicado']);
+                } else {
+                    // Insertar nuevo registro
+                    DB::insert('votantes_duplicados', [
+                        'nombres' => trim($_POST['nombres']),
+                        'apellidos' => trim($_POST['apellidos']),
+                        'identificacion' => trim($_POST['identificacion']),
+                        'telefono' => trim($_POST['telefono'] ?? ''),
+                        'mesa' => !empty($_POST['mesa']) ? intval($_POST['mesa']) : 0,
+                        'tipo_existente' => $validacion['tipo'],
+                        'nombre_existente' => $validacion['nombre'],
+                        'detalles_existente' => $detalles_existente,
+                        'metodo_intento' => 'formulario',
+                        'identificacion_lider_intento' => null,
+                        'id_usuario_intento' => $usuario_id,
+                        'nombre_usuario_intento' => $nombre_usuario_intento_completo
+                    ]);
+                }
+            } catch (Exception $e) {
+                // Si falla al guardar duplicado, continuar sin detener el proceso
+                error_log("Error al guardar duplicado: " . $e->getMessage());
             }
             
             echo json_encode(['success' => false, 'message' => $mensaje]);
