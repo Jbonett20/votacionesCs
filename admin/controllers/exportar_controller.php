@@ -52,7 +52,8 @@ function exportarLideres() {
                                      ORDER BY l.fecha_creacion DESC", $usuario_id);
     }
     
-    // Configurar headers para descarga
+    // Limpiar buffers y configurar headers para descarga
+    while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="lideres_' . date('Y-m-d_His') . '.csv"');
     header('Pragma: no-cache');
@@ -117,7 +118,8 @@ function exportarVotantes() {
                                       ORDER BY v.fecha_creacion DESC", $usuario_id);
     }
     
-    // Configurar headers
+    // Limpiar buffers y configurar headers
+    while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="votantes_' . date('Y-m-d_His') . '.csv"');
     header('Pragma: no-cache');
@@ -158,6 +160,7 @@ function exportarReporteCompleto() {
     $usuario_id = $_SESSION['usuario_id'];
     $usuario_rol = $_SESSION['usuario_rol'];
     
+    while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="reporte_completo_' . date('Y-m-d_His') . '.csv"');
     header('Pragma: no-cache');
@@ -218,6 +221,7 @@ function exportarReporteCompleto() {
  * Descargar plantilla para carga masiva
  */
 function descargarPlantilla() {
+    while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="plantilla_votantes.csv"');
     header('Pragma: no-cache');

@@ -280,7 +280,8 @@ function importarVotantes() {
                         
                         DB::update('votantes_duplicados', [
                             'nombre_usuario_intento' => $nombres_acumulados,
-                            'fecha_intento' => DB::sqleval('NOW()')
+                            'fecha_intento' => DB::sqleval('NOW()'),
+                            'lugar_mesa' => !empty($lugar_mesa) ? $lugar_mesa : ($duplicado_existente['lugar_mesa'] ?? null)
                         ], 'id_duplicado=%i', $duplicado_existente['id_duplicado']);
                     } else {
                         // Insertar nuevo registro
