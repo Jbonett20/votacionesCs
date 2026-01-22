@@ -74,6 +74,7 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                                     <th>Tipo ID</th>
                                     <th>Sexo</th>
                                     <th>Mesa</th>
+                                    <th>Lugar Mesa</th>
                                     <?php if (!$es_lider): ?>
                                     <th>Líder / Admin</th>
                                     <?php endif; ?>
@@ -150,6 +151,10 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                             <div class="col-md-6 mb-3">
                                 <label for="mesa" class="form-label">Mesa</label>
                                 <input type="number" class="form-control" id="mesa" name="mesa" placeholder="Opcional" min="1">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lugar_mesa" class="form-label">Lugar / Ubicación de la Mesa</label>
+                                <input type="text" class="form-control" id="lugar_mesa" name="lugar_mesa" placeholder="Opcional">
                             </div>
                         </div>
                         

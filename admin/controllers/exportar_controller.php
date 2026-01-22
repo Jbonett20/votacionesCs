@@ -127,7 +127,7 @@ function exportarVotantes() {
     fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
     
     // Encabezados
-    fputcsv($output, ['ID', 'Nombres', 'Apellidos', 'Identificación', 'Tipo ID', 'Teléfono', 'Sexo', 'Mesa', 'Líder', 'Admin Directo', 'Fecha Creación'], ';');
+    fputcsv($output, ['ID', 'Nombres', 'Apellidos', 'Identificación', 'Tipo ID', 'Teléfono', 'Sexo', 'Mesa', 'Lugar Mesa', 'Líder', 'Admin Directo', 'Fecha Creación'], ';');
     
     // Datos
     foreach ($votantes as $votante) {
@@ -140,6 +140,7 @@ function exportarVotantes() {
             $votante['telefono'] ?? '',
             $votante['sexo'] == 'M' ? 'Masculino' : ($votante['sexo'] == 'F' ? 'Femenino' : 'Otro'),
             $votante['mesa'] ?? 0,
+            $votante['lugar_mesa'] ?? '',
             $votante['lider_nombre'] ?? 'Ninguno',
             $votante['admin_nombre'] ?? 'Ninguno',
             date('d/m/Y H:i', strtotime($votante['fecha_creacion']))
@@ -226,11 +227,11 @@ function descargarPlantilla() {
     fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
     
     // Encabezados
-    fputcsv($output, ['nombres', 'apellidos', 'identificacion', 'telefono', 'mesa', 'identificacion_lider'], ';');
+    fputcsv($output, ['nombres', 'apellidos', 'identificacion', 'telefono', 'mesa', 'lugar_mesa', 'identificacion_lider'], ';');
     
     // Ejemplos
-    fputcsv($output, ['Juan', 'Pérez González', '1234567890', '3101234567', '1', ''], ';');
-    fputcsv($output, ['María', 'López Martínez', '0987654321', '3109876543', '0', ''], ';');
+    fputcsv($output, ['Juan', 'Pérez González', '1234567890', '3101234567', '1', 'Escuela Centro', ''], ';');
+    fputcsv($output, ['María', 'López Martínez', '0987654321', '3109876543', '0', '', ''], ';');
     
     fclose($output);
     exit;

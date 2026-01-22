@@ -232,6 +232,7 @@ function crearVotante() {
                         'identificacion' => trim($_POST['identificacion']),
                         'telefono' => trim($_POST['telefono'] ?? ''),
                         'mesa' => !empty($_POST['mesa']) ? intval($_POST['mesa']) : 0,
+                        'lugar_mesa' => !empty($_POST['lugar_mesa']) ? trim($_POST['lugar_mesa']) : null,
                         'tipo_existente' => $validacion['tipo'],
                         'nombre_existente' => $validacion['nombre'],
                         'detalles_existente' => $detalles_existente,
@@ -259,6 +260,7 @@ function crearVotante() {
             'sexo' => $_POST['sexo'],
             'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
             'mesa' => !empty($_POST['mesa']) ? intval($_POST['mesa']) : 0, // Por defecto 0
+            'lugar_mesa' => !empty($_POST['lugar_mesa']) ? trim($_POST['lugar_mesa']) : null,
             'id_lider' => $id_lider, // Puede ser NULL
             'id_administrador_directo' => $id_administrador_directo, // Puede ser NULL
             'id_usuario_creador' => $usuario_id, // Usuario que crea el registro
@@ -347,6 +349,7 @@ function editarVotante() {
             'sexo' => $_POST['sexo'],
             'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
             'mesa' => !empty($_POST['mesa']) ? intval($_POST['mesa']) : 0, // Por defecto 0
+            'lugar_mesa' => !empty($_POST['lugar_mesa']) ? trim($_POST['lugar_mesa']) : null,
             'id_estado' => $_POST['id_estado'] ?? 1
         ];
         
