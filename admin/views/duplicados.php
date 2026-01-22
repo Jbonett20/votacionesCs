@@ -73,6 +73,7 @@ $es_super_admin = $_SESSION['usuario_rol'] == 1;
                                     <th>Identificación</th>
                                     <th>Teléfono</th>
                                     <th>Mesa</th>
+                                    <th>Lugar Mesa</th>
                                     <th>Ya existe como</th>
                                     <th>Nombre existente</th>
                                     <th>Detalles</th>
@@ -133,6 +134,7 @@ $es_super_admin = $_SESSION['usuario_rol'] == 1;
                         }
                     },
                     { data: 'mesa' },
+                    { data: 'lugar_mesa', render: function(data) { return data || '<span class="text-muted">N/A</span>'; } },
                     { 
                         data: 'tipo_existente',
                         render: function(data) {
