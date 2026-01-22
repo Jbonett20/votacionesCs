@@ -23,6 +23,7 @@ $(document).ready(function() {
                 return data ? data : 0;
             }
         }
+        ,{ data: 'lugar_mesa', render: function(data) { return data ? data : ''; } }
     ];
     
     // Si no es líder, agregar columna de líder/admin
@@ -246,6 +247,7 @@ $(document).ready(function() {
                     $('#sexo').val(votante.sexo);
                     $('#telefono').val(votante.telefono || '');
                     $('#mesa').val(votante.mesa || '');
+                    $('#lugar_mesa').val(votante.lugar_mesa || '');
                     $('#id_estado').val(votante.id_estado);
                     
                     if (!esLider) {

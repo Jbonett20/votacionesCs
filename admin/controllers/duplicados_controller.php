@@ -53,6 +53,7 @@ function listarDuplicados() {
                     identificacion,
                     telefono,
                     mesa,
+                    lugar_mesa,
                     tipo_existente,
                     nombre_existente,
                     detalles_existente,
@@ -74,6 +75,7 @@ function listarDuplicados() {
                     identificacion,
                     telefono,
                     mesa,
+                    lugar_mesa,
                     tipo_existente,
                     nombre_existente,
                     detalles_existente,
@@ -104,6 +106,7 @@ function listarDuplicados() {
                     identificacion,
                     telefono,
                     mesa,
+                    lugar_mesa,
                     tipo_existente,
                     nombre_existente,
                     detalles_existente,
@@ -173,6 +176,7 @@ function exportarDuplicados() {
                     identificacion,
                     telefono,
                     mesa,
+                    lugar_mesa,
                     tipo_existente,
                     nombre_existente,
                     detalles_existente,
@@ -247,17 +251,18 @@ function exportarDuplicados() {
         $sheet->setCellValue('F1', 'Identificación');
         $sheet->setCellValue('G1', 'Teléfono');
         $sheet->setCellValue('H1', 'Mesa');
-        $sheet->setCellValue('I1', 'Ya existe como');
-        $sheet->setCellValue('J1', 'Nombre existente');
-        $sheet->setCellValue('K1', 'Detalles');
-        $sheet->setCellValue('L1', 'Intentos de registro (usuarios)');
+        $sheet->setCellValue('I1', 'Lugar Mesa');
+        $sheet->setCellValue('J1', 'Ya existe como');
+        $sheet->setCellValue('K1', 'Nombre existente');
+        $sheet->setCellValue('L1', 'Detalles');
+        $sheet->setCellValue('M1', 'Intentos de registro (usuarios)');
         
         // Estilo de encabezados
-        $sheet->getStyle('A1:L1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:L1')->getFill()
+        $sheet->getStyle('A1:M1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:M1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FF4472C4');
-        $sheet->getStyle('A1:L1')->getFont()->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('A1:M1')->getFont()->getColor()->setARGB('FFFFFFFF');
         
         // Datos
         $fila = 2;
@@ -270,15 +275,16 @@ function exportarDuplicados() {
             $sheet->setCellValue('F' . $fila, $dup['identificacion']);
             $sheet->setCellValue('G' . $fila, $dup['telefono'] ?: 'N/A');
             $sheet->setCellValue('H' . $fila, $dup['mesa']);
-            $sheet->setCellValue('I' . $fila, ucfirst($dup['tipo_existente']));
-            $sheet->setCellValue('J' . $fila, $dup['nombre_existente']);
-            $sheet->setCellValue('K' . $fila, $dup['detalles_existente'] ?: 'N/A');
-            $sheet->setCellValue('L' . $fila, $dup['nombre_usuario_intento']);
+            $sheet->setCellValue('I' . $fila, $dup['lugar_mesa'] ?: '');
+            $sheet->setCellValue('J' . $fila, ucfirst($dup['tipo_existente']));
+            $sheet->setCellValue('K' . $fila, $dup['nombre_existente']);
+            $sheet->setCellValue('L' . $fila, $dup['detalles_existente'] ?: 'N/A');
+            $sheet->setCellValue('M' . $fila, $dup['nombre_usuario_intento']);
             $fila++;
         }
         
         // Autoajustar columnas
-        foreach (range('A', 'L') as $col) {
+        foreach (range('A', 'M') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         

@@ -123,8 +123,8 @@ function importarVotantes() {
                 'message' => 'ERROR: Faltan columnas obligatorias en el archivo Excel',
                 'detalles' => 'Columnas faltantes: ' . implode(', ', $columnas_faltantes),
                 'columnas_encontradas' => implode(', ', array_filter($headers)),
-                'columnas_requeridas' => 'nombres, apellidos, identificacion',
-                'columnas_opcionales' => 'telefono, mesa, identificacion_lider'
+                    'columnas_requeridas' => 'nombres, apellidos, identificacion',
+                    'columnas_opcionales' => 'telefono, mesa, lugar_mesa, identificacion_lider'
             ]);
             return;
         }
@@ -135,6 +135,7 @@ function importarVotantes() {
         $idx_identificacion = array_search('identificacion', $headers);
         $idx_telefono = array_search('telefono', $headers);
         $idx_mesa = array_search('mesa', $headers);
+        $idx_lugar_mesa = array_search('lugar_mesa', $headers);
         $idx_identificacion_lider = array_search('identificacion_lider', $headers);
         
         $usuario_id = $_SESSION['usuario_id'];
@@ -160,6 +161,7 @@ function importarVotantes() {
             $identificacion = trim($datos[$idx_identificacion] ?? '');
             $telefono = trim($datos[$idx_telefono] ?? '');
             $mesa = $idx_mesa !== false ? trim($datos[$idx_mesa] ?? '') : '';
+            $lugar_mesa = $idx_lugar_mesa !== false ? trim($datos[$idx_lugar_mesa] ?? '') : '';
             $identificacion_lider = trim($datos[$idx_identificacion_lider] ?? '');
             
             // Validar campos obligatorios
@@ -238,15 +240,28 @@ function importarVotantes() {
                     );
                     $nombre_completo_usuario = $usuario_info ? $usuario_info['nombre_completo'] : ($_SESSION['usuario'] ?? 'Usuario');
                     
-                    // Agregar información del líder si existe
+                    // Agregar información del líder o admin si existe
                     $nombre_usuario_intento_completo = $nombre_completo_usuario;
                     if (!empty($identificacion_lider)) {
+                        // Primero intentar encontrar un líder con esa identificación
                         $lider = DB::queryFirstRow(
-                            "SELECT CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE identificacion = ?",
+                            "SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE identificacion = ? AND id_estado = 1",
                             $identificacion_lider
                         );
                         if ($lider) {
                             $nombre_usuario_intento_completo .= ', Líder: ' . $lider['nombre'];
+                        } else {
+                            // Si no es líder, intentar encontrar un usuario administrador (Admin/SuperAdmin)
+                            $usuario_admin = DB::queryFirstRow(
+                                "SELECT id_usuario, id_rol, CONCAT(nombres, ' ', apellidos) as nombre FROM usuarios WHERE identificacion = ? AND id_estado = 1",
+                                $identificacion_lider
+                            );
+                            if ($usuario_admin && in_array($usuario_admin['id_rol'], [1,2])) {
+                                $nombre_usuario_intento_completo .= ', Admin: ' . $usuario_admin['nombre'];
+                            } else {
+                                // Registrado directamente por el admin actual si no coincide con líder o admin
+                                $nombre_usuario_intento_completo .= ' (Registro directo)';
+                            }
                         }
                     } else {
                         // Registrado directamente por el admin
@@ -275,6 +290,7 @@ function importarVotantes() {
                             'identificacion' => $identificacion,
                             'telefono' => $telefono ?: null,
                             'mesa' => !empty($mesa) ? (int)$mesa : 0,
+                            'lugar_mesa' => !empty($lugar_mesa) ? $lugar_mesa : null,
                             'tipo_existente' => $validacion['tipo'],
                             'nombre_existente' => $validacion['nombre'],
                             'detalles_existente' => $detalles_existente,
@@ -298,21 +314,29 @@ function importarVotantes() {
             $id_administrador_directo = null;
             
             if (!empty($identificacion_lider)) {
+                // Intentar asignar a un líder primero
                 $lider = DB::queryFirstRow("SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE identificacion = ? AND id_estado = 1", $identificacion_lider);
-                if (!$lider) {
-                    $errores[] = "Línea $linea_num: ERROR - Líder no encontrado | Identificación líder buscada: '$identificacion_lider' | Votante: $nombres $apellidos (ID: $identificacion) | Solución: Verifique que el líder esté registrado en el sistema o deje el campo 'identificacion_lider' vacío para asignación directa";
-                    $linea_num++;
-                    continue;
+                if ($lider) {
+                    $id_lider = (int)$lider['id_lider'];
+                } else {
+                    // Si no es líder, verificar si la identificación corresponde a un usuario admin (SuperAdmin o Admin)
+                    $usuario_admin = DB::queryFirstRow("SELECT id_usuario, id_rol, CONCAT(nombres, ' ', apellidos) as nombre FROM usuarios WHERE identificacion = ? AND id_estado = 1", $identificacion_lider);
+                    if ($usuario_admin && in_array($usuario_admin['id_rol'], [1,2])) {
+                        $id_administrador_directo = (int)$usuario_admin['id_usuario'];
+                    } else {
+                        $errores[] = "Línea $linea_num: ERROR - Líder o administrador no encontrado | Identificación buscada: '$identificacion_lider' | Votante: $nombres $apellidos (ID: $identificacion) | Solución: Verifique que el líder/administrador esté registrado en el sistema o deje el campo 'identificacion_lider' vacío para asignación directa";
+                        $linea_num++;
+                        continue;
+                    }
                 }
-                $id_lider = (int)$lider['id_lider'];
             } else {
-                // Registro directo por admin
+                // Registro directo por admin que está importando
                 $id_administrador_directo = $usuario_id;
             }
             
             // Insertar votante
             try {
-                DB::insert('votantes', [
+                    DB::insert('votantes', [
                     'nombres' => $nombres,
                     'apellidos' => $apellidos,
                     'identificacion' => $identificacion,
@@ -320,6 +344,7 @@ function importarVotantes() {
                     'telefono' => $telefono ?: null,
                     'sexo' => 'O', // Sexo por defecto: Otro
                     'mesa' => !empty($mesa) ? (int)$mesa : 0,
+                    'lugar_mesa' => !empty($lugar_mesa) ? $lugar_mesa : null,
                     'id_lider' => $id_lider,
                     'id_administrador_directo' => $id_administrador_directo,
                     'id_usuario_creador' => $usuario_id,
