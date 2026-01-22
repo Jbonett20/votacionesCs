@@ -55,6 +55,8 @@ $nombre_usuario = $_SESSION['usuario_nombre'] ?? 'Usuario';
                                         <th>Apellidos</th>
                                         <th>Usuario</th>
                                         <th>Identificación</th>
+                                        <th>Departamento</th>
+                                        <th>Municipio</th>
                                         <th>Rol</th>
                                         <th>Estado</th>
                                         <th>Acciones</th>
@@ -138,6 +140,21 @@ $nombre_usuario = $_SESSION['usuario_nombre'] ?? 'Usuario';
                                 <select class="form-select" id="id_estado" name="id_estado">
                                     <option value="1">Activo</option>
                                     <option value="2">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_departamento" class="form-label">Departamento</label>
+                                <select class="form-select" id="id_departamento" name="id_departamento">
+                                    <option value="">Seleccione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_municipio" class="form-label">Ciudad / Municipio</label>
+                                <select class="form-select" id="id_municipio" name="id_municipio">
+                                    <option value="">Primero seleccione departamento</option>
                                 </select>
                             </div>
                         </div>
@@ -234,6 +251,7 @@ $nombre_usuario = $_SESSION['usuario_nombre'] ?? 'Usuario';
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Custom JS -->
     <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/ubicaciones.js"></script>
     <script src="../assets/js/usuarios.js"></script>
 </body>
 </html>

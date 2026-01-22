@@ -16,20 +16,26 @@ class LiderModel {
             // SuperAdmin ve todos
             return DB::queryAllRows(
                 "SELECT l.*, t.nombre_tipo,
-                        CONCAT(u.nombres, ' ', u.apellidos) as creador
+                        CONCAT(u.nombres, ' ', u.apellidos) as creador,
+                        d.nombre as departamento_nombre, m.nombre as municipio_nombre
                  FROM lideres l
                  INNER JOIN tipos_identificacion t ON l.id_tipo_identificacion = t.id_tipo_identificacion
                  INNER JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
+                 LEFT JOIN departamentos d ON l.id_departamento = d.id_departamento
+                 LEFT JOIN municipios m ON l.id_municipio = m.id_municipio
                  ORDER BY l.id_lider DESC"
             );
         } else {
             // Admin solo ve los que él creó
             return DB::queryAllRows(
                 "SELECT l.*, t.nombre_tipo,
-                        CONCAT(u.nombres, ' ', u.apellidos) as creador
+                        CONCAT(u.nombres, ' ', u.apellidos) as creador,
+                        d.nombre as departamento_nombre, m.nombre as municipio_nombre
                  FROM lideres l
                  INNER JOIN tipos_identificacion t ON l.id_tipo_identificacion = t.id_tipo_identificacion
                  INNER JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
+                 LEFT JOIN departamentos d ON l.id_departamento = d.id_departamento
+                 LEFT JOIN municipios m ON l.id_municipio = m.id_municipio
                  WHERE l.id_usuario_creador = ?
                  ORDER BY l.id_lider DESC",
                 $usuario_id

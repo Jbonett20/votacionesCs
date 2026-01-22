@@ -37,17 +37,23 @@ function exportarLideres() {
     
     // Query según rol
     if ($usuario_rol == 1) {
-        $lideres = DB::queryAllRows("SELECT l.*, t.nombre_tipo, CONCAT(u.nombres, ' ', u.apellidos) as creador
+        $lideres = DB::queryAllRows("SELECT l.*, t.nombre_tipo, CONCAT(u.nombres, ' ', u.apellidos) as creador,
+                                     d.nombre as departamento_nombre, m.nombre as municipio_nombre
                                      FROM lideres l
                                      LEFT JOIN tipos_identificacion t ON l.id_tipo_identificacion = t.id_tipo_identificacion
                                      LEFT JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
+                                     LEFT JOIN departamentos d ON l.id_departamento = d.id_departamento
+                                     LEFT JOIN municipios m ON l.id_municipio = m.id_municipio
                                      WHERE l.id_estado = 1
                                      ORDER BY l.fecha_creacion DESC");
     } else {
-        $lideres = DB::queryAllRows("SELECT l.*, t.nombre_tipo, CONCAT(u.nombres, ' ', u.apellidos) as creador
+        $lideres = DB::queryAllRows("SELECT l.*, t.nombre_tipo, CONCAT(u.nombres, ' ', u.apellidos) as creador,
+                                     d.nombre as departamento_nombre, m.nombre as municipio_nombre
                                      FROM lideres l
                                      LEFT JOIN tipos_identificacion t ON l.id_tipo_identificacion = t.id_tipo_identificacion
                                      LEFT JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
+                                     LEFT JOIN departamentos d ON l.id_departamento = d.id_departamento
+                                     LEFT JOIN municipios m ON l.id_municipio = m.id_municipio
                                      WHERE l.id_usuario_creador = ? AND l.id_estado = 1
                                      ORDER BY l.fecha_creacion DESC", $usuario_id);
     }
@@ -66,7 +72,7 @@ function exportarLideres() {
     fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
     
     // Encabezados
-    fputcsv($output, ['ID', 'Nombres', 'Apellidos', 'Identificación', 'Tipo ID', 'Sexo', 'Teléfono', 'Dirección', 'Creado por', 'Fecha Creación'], ';');
+    fputcsv($output, ['ID', 'Nombres', 'Apellidos', 'Identificación', 'Tipo ID', 'Sexo', 'Teléfono', 'Dirección', 'Departamento', 'Municipio', 'Creado por', 'Fecha Creación'], ';');
     
     // Datos
     foreach ($lideres as $lider) {
@@ -79,6 +85,8 @@ function exportarLideres() {
             $lider['sexo'] == 'M' ? 'Masculino' : ($lider['sexo'] == 'F' ? 'Femenino' : 'Otro'),
             $lider['telefono'] ?? '',
             $lider['direccion'] ?? '',
+            $lider['departamento_nombre'] ?? '',
+            $lider['municipio_nombre'] ?? '',
             $lider['creador'] ?? '',
             date('d/m/Y H:i', strtotime($lider['fecha_creacion']))
         ], ';');
@@ -99,21 +107,27 @@ function exportarVotantes() {
     if ($usuario_rol == 1) {
         $votantes = DB::queryAllRows("SELECT v.*, t.nombre_tipo, 
                                       CONCAT(l.nombres, ' ', l.apellidos) as lider_nombre,
-                                      CONCAT(u.nombres, ' ', u.apellidos) as admin_nombre
+                                      CONCAT(u.nombres, ' ', u.apellidos) as admin_nombre,
+                                      d.nombre as departamento_nombre, m.nombre as municipio_nombre
                                       FROM votantes v
                                       LEFT JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
                                       LEFT JOIN lideres l ON v.id_lider = l.id_lider
                                       LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+                                      LEFT JOIN departamentos d ON v.id_departamento = d.id_departamento
+                                      LEFT JOIN municipios m ON v.id_municipio = m.id_municipio
                                       WHERE v.id_estado = 1
                                       ORDER BY v.fecha_creacion DESC");
     } else {
         $votantes = DB::queryAllRows("SELECT v.*, t.nombre_tipo, 
                                       CONCAT(l.nombres, ' ', l.apellidos) as lider_nombre,
-                                      CONCAT(u.nombres, ' ', u.apellidos) as admin_nombre
+                                      CONCAT(u.nombres, ' ', u.apellidos) as admin_nombre,
+                                      d.nombre as departamento_nombre, m.nombre as municipio_nombre
                                       FROM votantes v
                                       LEFT JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
                                       LEFT JOIN lideres l ON v.id_lider = l.id_lider
                                       LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+                                      LEFT JOIN departamentos d ON v.id_departamento = d.id_departamento
+                                      LEFT JOIN municipios m ON v.id_municipio = m.id_municipio
                                       WHERE v.id_usuario_creador = ? AND v.id_estado = 1
                                       ORDER BY v.fecha_creacion DESC", $usuario_id);
     }
@@ -129,7 +143,7 @@ function exportarVotantes() {
     fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
     
     // Encabezados
-    fputcsv($output, ['ID', 'Nombres', 'Apellidos', 'Identificación', 'Tipo ID', 'Teléfono', 'Sexo', 'Mesa', 'Lugar Mesa', 'Líder', 'Admin Directo', 'Fecha Creación'], ';');
+    fputcsv($output, ['ID', 'Nombres', 'Apellidos', 'Identificación', 'Tipo ID', 'Teléfono', 'Sexo', 'Departamento', 'Municipio', 'Mesa', 'Lugar Mesa', 'Líder', 'Admin Directo', 'Fecha Creación'], ';');
     
     // Datos
     foreach ($votantes as $votante) {
@@ -141,6 +155,8 @@ function exportarVotantes() {
             $votante['nombre_tipo'],
             $votante['telefono'] ?? '',
             $votante['sexo'] == 'M' ? 'Masculino' : ($votante['sexo'] == 'F' ? 'Femenino' : 'Otro'),
+            $votante['departamento_nombre'] ?? '',
+            $votante['municipio_nombre'] ?? '',
             $votante['mesa'] ?? 0,
             $votante['lugar_mesa'] ?? '',
             $votante['lider_nombre'] ?? 'Ninguno',

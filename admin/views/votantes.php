@@ -73,6 +73,8 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                                     <th>Identificación</th>
                                     <th>Tipo ID</th>
                                     <th>Sexo</th>
+                                    <th>Departamento</th>
+                                    <th>Municipio</th>
                                     <th>Mesa</th>
                                     <th>Lugar Mesa</th>
                                     <?php if (!$es_lider): ?>
@@ -144,6 +146,21 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                             <div class="col-md-6 mb-3">
                                 <label for="telefono" class="form-label">Teléfono</label>
                                 <input type="text" class="form-control" id="telefono" name="telefono" placeholder="Opcional">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_departamento" class="form-label">Departamento</label>
+                                <select class="form-select" id="id_departamento" name="id_departamento">
+                                    <option value="">Seleccione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_municipio" class="form-label">Ciudad / Municipio</label>
+                                <select class="form-select" id="id_municipio" name="id_municipio">
+                                    <option value="">Primero seleccione departamento</option>
+                                </select>
                             </div>
                         </div>
                         
@@ -248,6 +265,7 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Custom JS -->
     <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/ubicaciones.js"></script>
     <script src="../assets/js/votantes.js"></script>
 </body>
 </html>

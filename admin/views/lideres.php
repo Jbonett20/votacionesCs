@@ -58,6 +58,8 @@ requerirRol([1, 2]);
                                     <th>Identificación</th>
                                     <th>Teléfono</th>
                                     <th>Sexo</th>
+                                    <th>Departamento</th>
+                                    <th>Municipio</th>
                                     <?php if (esSuperAdmin()): ?>
                                     <th>Creado Por</th>
                                     <?php endif; ?>
@@ -128,6 +130,21 @@ requerirRol([1, 2]);
                             </div>
                         </div>
                         
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_departamento" class="form-label">Departamento</label>
+                                <select class="form-select" id="id_departamento" name="id_departamento">
+                                    <option value="">Seleccione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_municipio" class="form-label">Ciudad / Municipio</label>
+                                <select class="form-select" id="id_municipio" name="id_municipio">
+                                    <option value="">Primero seleccione departamento</option>
+                                </select>
+                            </div>
+                        </div>
+                        
                         <div class="mb-3">
                             <label for="direccion" class="form-label">Dirección</label>
                             <input type="text" class="form-control" id="direccion" name="direccion">
@@ -168,6 +185,7 @@ requerirRol([1, 2]);
     <script>
         const ES_SUPER_ADMIN = <?php echo esSuperAdmin() ? 'true' : 'false'; ?>;
     </script>
+    <script src="../assets/js/ubicaciones.js"></script>
     <script src="../assets/js/lideres.js"></script>
 </body>
 </html>
