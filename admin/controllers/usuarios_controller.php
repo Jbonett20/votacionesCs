@@ -47,11 +47,14 @@ function listarUsuarios() {
     try {
         $usuarios = DB::queryAllRows(
             "SELECT u.*, r.nombre_rol, e.nombre_estado,
-                    t.nombre_tipo
+                    t.nombre_tipo,
+                    d.nombre as departamento_nombre, m.nombre as municipio_nombre
              FROM usuarios u
              INNER JOIN roles r ON u.id_rol = r.id_rol
              INNER JOIN estados e ON u.id_estado = e.id_estado
              INNER JOIN tipos_identificacion t ON u.id_tipo_identificacion = t.id_tipo_identificacion
+             LEFT JOIN departamentos d ON u.id_departamento = d.id_departamento
+             LEFT JOIN municipios m ON u.id_municipio = m.id_municipio
              WHERE u.id_rol IN (1, 2)
              ORDER BY u.id_usuario DESC"
         );
@@ -115,6 +118,8 @@ function crearUsuario() {
             'usuario' => trim($_POST['usuario']),
             'clave' => password_hash($_POST['clave'], PASSWORD_DEFAULT),
             'id_rol' => $_POST['id_rol'],
+            'id_departamento' => !empty($_POST['id_departamento']) ? intval($_POST['id_departamento']) : null,
+            'id_municipio' => !empty($_POST['id_municipio']) ? intval($_POST['id_municipio']) : null,
             'id_estado' => 1 // Activo
         ];
         
@@ -183,6 +188,8 @@ function editarUsuario() {
             'sexo' => $_POST['sexo'],
             'usuario' => trim($_POST['usuario']),
             'id_rol' => $_POST['id_rol'],
+            'id_departamento' => !empty($_POST['id_departamento']) ? intval($_POST['id_departamento']) : null,
+            'id_municipio' => !empty($_POST['id_municipio']) ? intval($_POST['id_municipio']) : null,
             'id_estado' => $_POST['id_estado'] ?? 1
         ];
         

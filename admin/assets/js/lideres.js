@@ -2,6 +2,9 @@ $(document).ready(function() {
     let table;
     const esSuperAdmin = typeof ES_SUPER_ADMIN !== 'undefined' ? ES_SUPER_ADMIN : false;
     
+    // Inicializar sistema de ubicaciones
+    inicializarUbicaciones('id_departamento', 'id_municipio');
+    
     // Configurar columnas
     let columns = [
         { data: 'id_lider' },
@@ -16,6 +19,18 @@ $(document).ready(function() {
             data: 'sexo',
             render: function(data) {
                 return data === 'M' ? 'Masculino' : (data === 'F' ? 'Femenino' : 'Otro');
+            }
+        },
+        { 
+            data: 'departamento_nombre',
+            render: function(data) {
+                return data ? data : '<span class="text-muted">-</span>';
+            }
+        },
+        { 
+            data: 'municipio_nombre',
+            render: function(data) {
+                return data ? data : '<span class="text-muted">-</span>';
             }
         }
     ];
@@ -97,6 +112,9 @@ $(document).ready(function() {
         $('#action').val('crear');
         $('#modalTitleText').text('Nuevo Líder');
         $('#estadoField').hide();
+        
+        // Limpiar ubicaciones
+        limpiarUbicaciones('id_departamento', 'id_municipio');
     }
     
     // Abrir modal para nuevo líder
@@ -174,6 +192,11 @@ $(document).ready(function() {
                     $('#telefono').val(lider.telefono || '');
                     $('#direccion').val(lider.direccion || '');
                     $('#id_estado').val(lider.id_estado);
+                    
+                    // Precargar ubicación
+                    if (lider.id_departamento && lider.id_municipio) {
+                        precargarUbicacion(lider.id_departamento, lider.id_municipio, 'id_departamento', 'id_municipio');
+                    }
                     
                     $('#modalTitleText').text('Editar Líder');
                     $('#estadoField').show();

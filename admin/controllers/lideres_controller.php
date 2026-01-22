@@ -100,6 +100,8 @@ function crearLider() {
             'sexo' => $_POST['sexo'],
             'telefono' => trim($_POST['telefono'] ?? ''),
             'direccion' => trim($_POST['direccion'] ?? ''),
+            'id_departamento' => !empty($_POST['id_departamento']) ? intval($_POST['id_departamento']) : null,
+            'id_municipio' => !empty($_POST['id_municipio']) ? intval($_POST['id_municipio']) : null,
             'id_usuario_creador' => $_SESSION['usuario_id'],
             'id_estado' => 1 // Activo
         ];
@@ -178,6 +180,8 @@ function editarLider() {
             'sexo' => $_POST['sexo'],
             'telefono' => trim($_POST['telefono'] ?? ''),
             'direccion' => trim($_POST['direccion'] ?? ''),
+            'id_departamento' => !empty($_POST['id_departamento']) ? intval($_POST['id_departamento']) : null,
+            'id_municipio' => !empty($_POST['id_municipio']) ? intval($_POST['id_municipio']) : null,
             'id_estado' => $_POST['id_estado'] ?? 1
         ];
         

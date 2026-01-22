@@ -61,10 +61,13 @@ function listarVotantes() {
             }
             
             $votantes = DB::queryAllRows(
-                "SELECT v.*, t.nombre_tipo, l.nombres as lider_nombres, l.apellidos as lider_apellidos
+                "SELECT v.*, t.nombre_tipo, l.nombres as lider_nombres, l.apellidos as lider_apellidos,
+                        d.nombre as departamento_nombre, m.nombre as municipio_nombre
                  FROM votantes v
                  INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
                  LEFT JOIN lideres l ON v.id_lider = l.id_lider
+                 LEFT JOIN departamentos d ON v.id_departamento = d.id_departamento
+                 LEFT JOIN municipios m ON v.id_municipio = m.id_municipio
                  WHERE v.id_lider = ?
                  ORDER BY v.id_votante DESC",
                 $idLider
@@ -74,11 +77,14 @@ function listarVotantes() {
             $votantes = DB::queryAllRows(
                 "SELECT v.*, t.nombre_tipo, 
                         l.nombres as lider_nombres, l.apellidos as lider_apellidos,
-                        CONCAT(u.nombres, ' ', u.apellidos) as admin_directo
+                        CONCAT(u.nombres, ' ', u.apellidos) as admin_directo,
+                        d.nombre as departamento_nombre, m.nombre as municipio_nombre
                  FROM votantes v
                  INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
                  LEFT JOIN lideres l ON v.id_lider = l.id_lider
                  LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+                 LEFT JOIN departamentos d ON v.id_departamento = d.id_departamento
+                 LEFT JOIN municipios m ON v.id_municipio = m.id_municipio
                  WHERE (l.id_usuario_creador = ? OR v.id_administrador_directo = ?)
                  ORDER BY v.id_votante DESC",
                 $usuario_id,
@@ -90,11 +96,14 @@ function listarVotantes() {
                 "SELECT v.*, t.nombre_tipo, 
                         l.nombres as lider_nombres, l.apellidos as lider_apellidos,
                         CONCAT(u.nombres, ' ', u.apellidos) as admin_directo,
-                        v.mesa
+                        v.mesa,
+                        d.nombre as departamento_nombre, m.nombre as municipio_nombre
                  FROM votantes v
                  INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
                  LEFT JOIN lideres l ON v.id_lider = l.id_lider
                  LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+                 LEFT JOIN departamentos d ON v.id_departamento = d.id_departamento
+                 LEFT JOIN municipios m ON v.id_municipio = m.id_municipio
                  ORDER BY v.id_votante DESC"
             );
         }
@@ -223,7 +232,9 @@ function crearVotante() {
                     DB::update('votantes_duplicados', [
                         'nombre_usuario_intento' => $nombres_acumulados,
                         'fecha_intento' => DB::sqleval('NOW()'),
-                        'lugar_mesa' => !empty($_POST['lugar_mesa']) ? trim($_POST['lugar_mesa']) : $duplicado_existente['lugar_mesa'] ?? null
+                        'lugar_mesa' => !empty($_POST['lugar_mesa']) ? trim($_POST['lugar_mesa']) : $duplicado_existente['lugar_mesa'] ?? null,
+                        'id_departamento' => !empty($_POST['id_departamento']) ? intval($_POST['id_departamento']) : null,
+                        'id_municipio' => !empty($_POST['id_municipio']) ? intval($_POST['id_municipio']) : null
                     ], 'id_duplicado=%i', $duplicado_existente['id_duplicado']);
                 } else {
                     // Insertar nuevo registro
@@ -240,7 +251,9 @@ function crearVotante() {
                         'metodo_intento' => 'formulario',
                         'identificacion_lider_intento' => null,
                         'id_usuario_intento' => $usuario_id,
-                        'nombre_usuario_intento' => $nombre_usuario_intento_completo
+                        'nombre_usuario_intento' => $nombre_usuario_intento_completo,
+                        'id_departamento' => !empty($_POST['id_departamento']) ? intval($_POST['id_departamento']) : null,
+                        'id_municipio' => !empty($_POST['id_municipio']) ? intval($_POST['id_municipio']) : null
                     ]);
                 }
             } catch (Exception $e) {
@@ -262,6 +275,8 @@ function crearVotante() {
             'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
             'mesa' => !empty($_POST['mesa']) ? intval($_POST['mesa']) : 0, // Por defecto 0
             'lugar_mesa' => !empty($_POST['lugar_mesa']) ? trim($_POST['lugar_mesa']) : null,
+            'id_departamento' => !empty($_POST['id_departamento']) ? intval($_POST['id_departamento']) : null,
+            'id_municipio' => !empty($_POST['id_municipio']) ? intval($_POST['id_municipio']) : null,
             'id_lider' => $id_lider, // Puede ser NULL
             'id_administrador_directo' => $id_administrador_directo, // Puede ser NULL
             'id_usuario_creador' => $usuario_id, // Usuario que crea el registro
@@ -351,6 +366,8 @@ function editarVotante() {
             'telefono' => trim($_POST['telefono'] ?? ''), // No obligatorio
             'mesa' => !empty($_POST['mesa']) ? intval($_POST['mesa']) : 0, // Por defecto 0
             'lugar_mesa' => !empty($_POST['lugar_mesa']) ? trim($_POST['lugar_mesa']) : null,
+            'id_departamento' => !empty($_POST['id_departamento']) ? intval($_POST['id_departamento']) : null,
+            'id_municipio' => !empty($_POST['id_municipio']) ? intval($_POST['id_municipio']) : null,
             'id_estado' => $_POST['id_estado'] ?? 1
         ];
         

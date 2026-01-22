@@ -4,6 +4,9 @@ $(document).ready(function() {
     const esLider = $('#es_lider').val() === '1';
     console.log('Es líder:', esLider);
     
+    // Inicializar sistema de ubicaciones
+    inicializarUbicaciones('id_departamento', 'id_municipio');
+    
     // Configurar columnas según rol
     let columns = [
         { data: 'id_votante' },
@@ -15,6 +18,18 @@ $(document).ready(function() {
             data: 'sexo',
             render: function(data) {
                 return data === 'M' ? 'Masculino' : (data === 'F' ? 'Femenino' : 'Otro');
+            }
+        },
+        { 
+            data: 'departamento_nombre',
+            render: function(data) {
+                return data ? data : '<span class="text-muted">-</span>';
+            }
+        },
+        { 
+            data: 'municipio_nombre',
+            render: function(data) {
+                return data ? data : '<span class="text-muted">-</span>';
             }
         },
         { 
@@ -149,6 +164,9 @@ $(document).ready(function() {
         $('#modalTitleText').text('Nuevo Votante');
         $('#estadoField').hide();
         
+        // Limpiar ubicaciones
+        limpiarUbicaciones('id_departamento', 'id_municipio');
+        
         if (!esLider) {
             // Limpiar Select2 correctamente
             if ($('#id_lider').hasClass('select2-hidden-accessible')) {
@@ -249,6 +267,11 @@ $(document).ready(function() {
                     $('#mesa').val(votante.mesa || '');
                     $('#lugar_mesa').val(votante.lugar_mesa || '');
                     $('#id_estado').val(votante.id_estado);
+                    
+                    // Precargar ubicación
+                    if (votante.id_departamento && votante.id_municipio) {
+                        precargarUbicacion(votante.id_departamento, votante.id_municipio, 'id_departamento', 'id_municipio');
+                    }
                     
                     if (!esLider) {
                         // Si tiene líder asignado, seleccionarlo; si no, seleccionar "Por mí"

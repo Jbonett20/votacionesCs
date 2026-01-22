@@ -32,6 +32,18 @@ $(document).ready(function() {
                 { data: 'usuario' },
                 { data: 'identificacion' },
                 { 
+                    data: 'departamento_nombre',
+                    render: function(data) {
+                        return data ? data : '<span class="text-muted">-</span>';
+                    }
+                },
+                { 
+                    data: 'municipio_nombre',
+                    render: function(data) {
+                        return data ? data : '<span class="text-muted">-</span>';
+                    }
+                },
+                { 
                     data: 'nombre_rol',
                     render: function(data) {
                         return data === 'SuperAdmin' 
@@ -100,16 +112,24 @@ $(document).ready(function() {
         $('#passwordFields').show();
         $('#clave, #clave_confirm').prop('required', true);
         $('#estadoField').hide();
+        // Limpiar selects de ubicación
+        $('#id_municipio').empty().append('<option value="">Primero seleccione un departamento</option>');
     }
     
     // Inicializar
     initDataTable();
     cargarTiposIdentificacion();
     
+    // Inicializar sistema de ubicaciones después de que el DOM esté listo
+    setTimeout(function() {
+        inicializarUbicaciones('id_departamento', 'id_municipio');
+    }, 100);
+    
     // Abrir modal para nuevo usuario
     $('#modalUsuario').on('show.bs.modal', function() {
         if ($('#action').val() === 'crear') {
             limpiarFormulario();
+            limpiarUbicaciones('id_departamento', 'id_municipio');
         }
     });
     
@@ -198,6 +218,9 @@ $(document).ready(function() {
                     $('#usuario').val(usuario.usuario);
                     $('#id_rol').val(usuario.id_rol);
                     $('#id_estado').val(usuario.id_estado);
+                    
+                    // Precargar ubicaciones
+                    precargarUbicacion(usuario.id_departamento, usuario.id_municipio, 'id_departamento', 'id_municipio');
                     
                     $('#modalTitleText').text('Editar Usuario');
                     $('#passwordFields').hide();
