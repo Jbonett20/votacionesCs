@@ -11,7 +11,7 @@ require_once __DIR__ . '/../../vendor/meekrodb/db.class.php';
 DB::$host = 'localhost';
 DB::$user = 'root';
 DB::$password = '';
-DB::$dbName = 'bd_votaciones';
+DB::$dbName = 'db_votantes';
 DB::$encoding = 'utf8mb4';
 DB::$error_handler = 'sql_error_handler';
 DB::$nonsql_error_handler = 'nonsql_error_handler';

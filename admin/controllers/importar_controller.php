@@ -17,10 +17,15 @@ requerirRol([1, 2]); // Solo SuperAdmin y Admin
 
 $action = $_POST['action'] ?? '';
 
-if ($action === 'importar_votantes') {
-    importarVotantes();
-} else {
-    echo json_encode(['success' => false, 'message' => 'Acción no válida']);
+switch ($action) {
+    case 'importar_votantes':
+        importarVotantes();
+        break;
+    case 'registrar_duplicados_importacion':
+        registrarDuplicadosImportacion();
+        break;
+    default:
+        echo json_encode(['success' => false, 'message' => 'Acción no válida']);
 }
 
 /**
@@ -142,6 +147,7 @@ function importarVotantes() {
         $insertados = 0;
         $errores = [];
         $duplicados = [];
+        $duplicados_detalle = [];
         
         // Procesar datos
         $linea_num = $linea_inicio;
@@ -231,81 +237,15 @@ function importarVotantes() {
                     }
                 }
                 
-                // GUARDAR O ACTUALIZAR EN TABLA DE DUPLICADOS
-                try {
-                    // Obtener nombre completo del usuario desde la base de datos
-                    $usuario_info = DB::queryFirstRow(
-                        "SELECT CONCAT(nombres, ' ', apellidos) as nombre_completo FROM usuarios WHERE id_usuario = ?",
-                        $usuario_id
-                    );
-                    $nombre_completo_usuario = $usuario_info ? $usuario_info['nombre_completo'] : ($_SESSION['usuario'] ?? 'Usuario');
-                    
-                    // Agregar información del líder o admin si existe
-                    $nombre_usuario_intento_completo = $nombre_completo_usuario;
-                    if (!empty($identificacion_lider)) {
-                        // Primero intentar encontrar un líder con esa identificación
-                        $lider = DB::queryFirstRow(
-                            "SELECT id_lider, CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE identificacion = ? AND id_estado = 1",
-                            $identificacion_lider
-                        );
-                        if ($lider) {
-                            $nombre_usuario_intento_completo .= ', Líder: ' . $lider['nombre'];
-                        } else {
-                            // Si no es líder, intentar encontrar un usuario administrador (Admin/SuperAdmin)
-                            $usuario_admin = DB::queryFirstRow(
-                                "SELECT id_usuario, id_rol, CONCAT(nombres, ' ', apellidos) as nombre FROM usuarios WHERE identificacion = ? AND id_estado = 1",
-                                $identificacion_lider
-                            );
-                            if ($usuario_admin && in_array($usuario_admin['id_rol'], [1,2])) {
-                                $nombre_usuario_intento_completo .= ', Admin: ' . $usuario_admin['nombre'];
-                            } else {
-                                // Registrado directamente por el admin actual si no coincide con líder o admin
-                                $nombre_usuario_intento_completo .= ' (Registro directo)';
-                            }
-                        }
-                    } else {
-                        // Registrado directamente por el admin
-                        $nombre_usuario_intento_completo .= ' (Registro directo)';
-                    }
-                    
-                    // Verificar si ya existe un registro con esta identificación
-                    $duplicado_existente = DB::queryFirstRow(
-                        "SELECT id_duplicado, nombre_usuario_intento FROM votantes_duplicados WHERE identificacion = ?",
-                        $identificacion
-                    );
-                    
-                    if ($duplicado_existente) {
-                        // Actualizar agregando el nuevo intento
-                        $nombres_acumulados = $duplicado_existente['nombre_usuario_intento'] . ' | ' . $nombre_usuario_intento_completo;
-                        
-                        DB::update('votantes_duplicados', [
-                            'nombre_usuario_intento' => $nombres_acumulados,
-                            'fecha_intento' => DB::sqleval('NOW()'),
-                            'lugar_mesa' => !empty($lugar_mesa) ? $lugar_mesa : ($duplicado_existente['lugar_mesa'] ?? null)
-                        ], 'id_duplicado=%i', $duplicado_existente['id_duplicado']);
-                    } else {
-                        // Insertar nuevo registro
-                        DB::insert('votantes_duplicados', [
-                            'nombres' => $nombres,
-                            'apellidos' => $apellidos,
-                            'identificacion' => $identificacion,
-                            'telefono' => $telefono ?: null,
-                            'mesa' => !empty($mesa) ? (int)$mesa : 0,
-                            'lugar_mesa' => !empty($lugar_mesa) ? $lugar_mesa : null,
-                            'tipo_existente' => $validacion['tipo'],
-                            'nombre_existente' => $validacion['nombre'],
-                            'detalles_existente' => $detalles_existente,
-                            'metodo_intento' => 'excel',
-                            'identificacion_lider_intento' => $identificacion_lider ?: null,
-                            'id_usuario_intento' => $usuario_id,
-                            'nombre_usuario_intento' => $nombre_usuario_intento_completo
-                        ]);
-                    }
-                } catch (Exception $e) {
-                    // Si falla al guardar duplicado, continuar sin detener el proceso
-                    error_log("Error al guardar duplicado: " . $e->getMessage());
-                }
-                
+                $duplicados_detalle[] = [
+                    'linea' => $linea_num,
+                    'nombres' => $nombres,
+                    'apellidos' => $apellidos,
+                    'identificacion' => $identificacion,
+                    'tipo' => $validacion['tipo'],
+                    'nombre' => $validacion['nombre'],
+                    'detalles' => $detalles_existente
+                ];
                 $duplicados[] = $mensaje_dup;
                 continue;
             }
@@ -381,11 +321,210 @@ function importarVotantes() {
             'message' => $mensaje,
             'insertados' => $insertados,
             'duplicados' => $duplicados,
+            'duplicados_detalle' => $duplicados_detalle,
             'errores' => $errores
         ]);
         
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Error al procesar archivo: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Guardar duplicados detectados en importacion
+ */
+function registrarDuplicadosImportacion() {
+    try {
+        $identificaciones_raw = $_POST['identificaciones'] ?? '[]';
+        $id_lider_intento = $_POST['id_lider_intento'] ?? '';
+
+        if (is_array($identificaciones_raw)) {
+            $identificaciones = $identificaciones_raw;
+        } else {
+            $identificaciones = json_decode($identificaciones_raw, true);
+        }
+
+        if (empty($identificaciones) || !is_array($identificaciones)) {
+            echo json_encode(['success' => false, 'message' => 'No hay identificaciones para guardar']);
+            return;
+        }
+
+        if (empty($id_lider_intento)) {
+            echo json_encode(['success' => false, 'message' => 'Debe seleccionar quien intento registrar']);
+            return;
+        }
+
+        $usuario_id = $_SESSION['usuario_id'];
+        $usuario_info = DB::queryFirstRow(
+            "SELECT CONCAT(nombres, ' ', apellidos) as nombre_completo FROM usuarios WHERE id_usuario = ?",
+            $usuario_id
+        );
+        $nombre_usuario_intento = $usuario_info ? $usuario_info['nombre_completo'] : ($_SESSION['usuario'] ?? 'Usuario');
+
+        if (!empty($id_lider_intento) && $id_lider_intento !== 'actual' && $id_lider_intento !== 'yo') {
+            $lider = DB::queryFirstRow(
+                "SELECT CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE id_lider = ?",
+                $id_lider_intento
+            );
+            if ($lider) {
+                $nombre_usuario_intento .= ', Lider: ' . $lider['nombre'];
+            }
+        } else {
+            $nombre_usuario_intento .= ' (Registro directo)';
+        }
+
+        $guardados = 0;
+        $no_encontrados = [];
+        $fecha_intento = date('Y-m-d H:i:s');
+
+        foreach ($identificaciones as $identificacion) {
+            $identificacion = trim($identificacion);
+            if ($identificacion === '') {
+                continue;
+            }
+
+            $validacion = LiderModel::identificacionExiste($identificacion);
+            if (!$validacion['existe']) {
+                $no_encontrados[] = $identificacion;
+                continue;
+            }
+
+            $detalles_existente = '';
+            $nombres = '';
+            $apellidos = '';
+            $telefono = null;
+            $mesa = 0;
+            $lugar_mesa = null;
+            $id_departamento = null;
+            $id_municipio = null;
+
+            if ($validacion['tipo'] === 'votante') {
+                $votante = DB::queryFirstRow(
+                    "SELECT v.*, 
+                            l.nombres as lider_nombres, l.apellidos as lider_apellidos,
+                            CONCAT(u.nombres, ' ', u.apellidos) as admin_directo
+                     FROM votantes v
+                     LEFT JOIN lideres l ON v.id_lider = l.id_lider
+                     LEFT JOIN usuarios u ON v.id_administrador_directo = u.id_usuario
+                     WHERE v.identificacion = ?
+                     LIMIT 1",
+                    $identificacion
+                );
+
+                if (!$votante) {
+                    $no_encontrados[] = $identificacion;
+                    continue;
+                }
+
+                $nombres = $votante['nombres'];
+                $apellidos = $votante['apellidos'];
+                $telefono = $votante['telefono'] ?? null;
+                $mesa = !empty($votante['mesa']) ? intval($votante['mesa']) : 0;
+                $lugar_mesa = $votante['lugar_mesa'] ?? null;
+                $id_departamento = !empty($votante['id_departamento']) ? intval($votante['id_departamento']) : null;
+                $id_municipio = !empty($votante['id_municipio']) ? intval($votante['id_municipio']) : null;
+
+                if (!empty($votante['lider_nombres'])) {
+                    $detalles_existente = 'Pertenece al lider: ' . trim($votante['lider_nombres'] . ' ' . $votante['lider_apellidos']);
+                } elseif (!empty($votante['admin_directo'])) {
+                    $detalles_existente = 'Registrado por: ' . $votante['admin_directo'];
+                }
+            } elseif ($validacion['tipo'] === 'líder') {
+                $lider = DB::queryFirstRow(
+                    "SELECT l.*, CONCAT(u.nombres, ' ', u.apellidos) as administrador
+                     FROM lideres l
+                     LEFT JOIN usuarios u ON l.id_usuario_creador = u.id_usuario
+                     WHERE l.identificacion = ?
+                     LIMIT 1",
+                    $identificacion
+                );
+
+                if (!$lider) {
+                    $no_encontrados[] = $identificacion;
+                    continue;
+                }
+
+                $nombres = $lider['nombres'];
+                $apellidos = $lider['apellidos'];
+                $telefono = $lider['telefono'] ?? null;
+                $id_departamento = !empty($lider['id_departamento']) ? intval($lider['id_departamento']) : null;
+                $id_municipio = !empty($lider['id_municipio']) ? intval($lider['id_municipio']) : null;
+
+                if (!empty($lider['administrador'])) {
+                    $detalles_existente = 'Creado por: ' . $lider['administrador'];
+                }
+            } elseif ($validacion['tipo'] === 'usuario') {
+                $usuario = DB::queryFirstRow(
+                    "SELECT u.*, r.nombre_rol
+                     FROM usuarios u
+                     INNER JOIN roles r ON u.id_rol = r.id_rol
+                     WHERE u.identificacion = ?
+                     LIMIT 1",
+                    $identificacion
+                );
+
+                if (!$usuario) {
+                    $no_encontrados[] = $identificacion;
+                    continue;
+                }
+
+                $nombres = $usuario['nombres'];
+                $apellidos = $usuario['apellidos'];
+                $telefono = $usuario['telefono'] ?? null;
+
+                if (!empty($usuario['nombre_rol'])) {
+                    $detalles_existente = 'Rol: ' . $usuario['nombre_rol'];
+                }
+            }
+
+            $duplicado_existente = DB::queryFirstRow(
+                "SELECT id_duplicado, nombre_usuario_intento FROM votantes_duplicados WHERE identificacion = ?",
+                $identificacion
+            );
+
+            if ($duplicado_existente) {
+                $nombres_acumulados = $duplicado_existente['nombre_usuario_intento'] . ' | ' . $nombre_usuario_intento;
+                DB::update(
+                    'votantes_duplicados',
+                    [
+                        'nombre_usuario_intento' => $nombres_acumulados,
+                        'fecha_intento' => $fecha_intento
+                    ],
+                    'id_duplicado = ?',
+                    $duplicado_existente['id_duplicado']
+                );
+            } else {
+                DB::insert('votantes_duplicados', [
+                    'nombres' => trim($nombres),
+                    'apellidos' => trim($apellidos),
+                    'identificacion' => $identificacion,
+                    'telefono' => $telefono ?: null,
+                    'mesa' => $mesa,
+                    'lugar_mesa' => $lugar_mesa,
+                    'tipo_existente' => $validacion['tipo'],
+                    'nombre_existente' => $validacion['nombre'],
+                    'detalles_existente' => $detalles_existente,
+                    'metodo_intento' => 'excel',
+                    'identificacion_lider_intento' => null,
+                    'id_usuario_intento' => $usuario_id,
+                    'nombre_usuario_intento' => $nombre_usuario_intento,
+                    'id_departamento' => $id_departamento,
+                    'id_municipio' => $id_municipio,
+                    'fecha_intento' => $fecha_intento
+                ]);
+            }
+
+            $guardados++;
+        }
+
+        $mensaje = "$guardados duplicados guardados.";
+        if (!empty($no_encontrados)) {
+            $mensaje .= ' No encontrados: ' . implode(', ', $no_encontrados);
+        }
+
+        echo json_encode(['success' => true, 'message' => $mensaje]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error al guardar duplicados: ' . $e->getMessage()]);
     }
 }
 ?>

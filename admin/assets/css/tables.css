@@ -43,6 +43,8 @@
     border-radius: 8px;
     font-size: 14px;
     margin: 0 8px;
+    background-color: #f3f4f6;
+    color: #111827;
 }
 
 .dataTables_wrapper .dataTables_filter input {
@@ -180,12 +182,54 @@
     padding: 10px 15px;
     font-size: 14px;
     transition: border-color 0.3s ease;
+    background-color: #f3f4f6;
+    color: #111827;
 }
 
 .form-control:focus,
 .form-select:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-select option {
+    background-color: #9ca3af;
+    color: #ffffff;
+}
+
+.form-select option:checked {
+    background-color: #6b7280;
+    color: #ffffff;
+}
+
+.select2-container--bootstrap-5 .select2-selection {
+    background-color: #f3f4f6;
+    color: #111827;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+    color: #111827;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    border: 2px solid #e5e7eb;
+}
+
+.select2-container--bootstrap-5 .select2-results__option {
+    background-color: #9ca3af;
+    color: #ffffff;
+}
+
+.select2-container--bootstrap-5 .select2-results__option--highlighted {
+    background-color: #6b7280;
+    color: #ffffff;
+}
+
+.select2-container--bootstrap-5 .select2-results__option[aria-selected="true"] {
+    background-color: #6b7280;
+    color: #ffffff;
 }
 
 /* Loading Overlay */

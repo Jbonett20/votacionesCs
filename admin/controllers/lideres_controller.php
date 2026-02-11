@@ -34,6 +34,9 @@ switch ($action) {
     case 'obtener_tipos_identificacion':
         obtenerTiposIdentificacion();
         break;
+    case 'verificar_identificacion':
+        verificarIdentificacion();
+        break;
     default:
         echo json_encode(['success' => false, 'message' => 'Acción no válida']);
 }
@@ -270,6 +273,54 @@ function obtenerLider() {
         
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Error al obtener líder: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Verificar si la identificacion ya existe
+ */
+function verificarIdentificacion() {
+    try {
+        $identificacion = trim($_POST['identificacion'] ?? '');
+
+        if ($identificacion === '') {
+            echo json_encode(['success' => false, 'message' => 'Identificación no válida']);
+            return;
+        }
+
+        $validacion = LiderModel::identificacionExiste($identificacion);
+        if (!$validacion['existe']) {
+            echo json_encode(['success' => true, 'exists' => false]);
+            return;
+        }
+
+        $detalles = '';
+        $creado_por = '';
+
+        if ($validacion['tipo'] === 'líder' && !empty($validacion['administrador'])) {
+            $creado_por = $validacion['administrador'];
+        } elseif ($validacion['tipo'] === 'votante') {
+            if (!empty($validacion['lider'])) {
+                $detalles = 'Pertenece al líder: ' . $validacion['lider'];
+            } elseif (!empty($validacion['administrador'])) {
+                $detalles = 'Registrado por: ' . $validacion['administrador'];
+            }
+        } elseif ($validacion['tipo'] === 'usuario' && !empty($validacion['rol'])) {
+            $detalles = 'Rol: ' . $validacion['rol'];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'exists' => true,
+            'data' => [
+                'tipo' => $validacion['tipo'],
+                'nombre' => $validacion['nombre'],
+                'creado_por' => $creado_por,
+                'detalles' => $detalles
+            ]
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error al verificar identificación: ' . $e->getMessage()]);
     }
 }
 

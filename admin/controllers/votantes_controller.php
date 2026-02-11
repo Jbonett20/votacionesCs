@@ -37,6 +37,12 @@ switch ($action) {
     case 'obtener_lideres':
         obtenerLideres();
         break;
+    case 'verificar_identificacion':
+        verificarIdentificacion();
+        break;
+    case 'registrar_duplicado_intento':
+        registrarDuplicadoIntento();
+        break;
     default:
         echo json_encode(['success' => false, 'message' => 'Acción no válida']);
 }
@@ -515,6 +521,185 @@ function obtenerLideres() {
         
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Error al obtener líderes: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Verificar si la identificación ya existe como votante
+ */
+function verificarIdentificacion() {
+    try {
+        $identificacion = trim($_POST['identificacion'] ?? '');
+
+        if ($identificacion === '') {
+            echo json_encode(['success' => false, 'message' => 'Identificación no válida']);
+            return;
+        }
+
+        $votante = DB::queryFirstRow(
+            "SELECT v.*, t.nombre_tipo,
+                    d.nombre as departamento_nombre, m.nombre as municipio_nombre,
+                    l.nombres as lider_nombres, l.apellidos as lider_apellidos,
+                    CONCAT(u_admin.nombres, ' ', u_admin.apellidos) as admin_directo_nombre,
+                    CONCAT(u_lider_admin.nombres, ' ', u_lider_admin.apellidos) as admin_lider_nombre
+             FROM votantes v
+             INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
+             LEFT JOIN lideres l ON v.id_lider = l.id_lider
+             LEFT JOIN usuarios u_admin ON v.id_administrador_directo = u_admin.id_usuario
+             LEFT JOIN usuarios u_lider_admin ON l.id_usuario_creador = u_lider_admin.id_usuario
+             LEFT JOIN departamentos d ON v.id_departamento = d.id_departamento
+             LEFT JOIN municipios m ON v.id_municipio = m.id_municipio
+             WHERE v.identificacion = ?
+             LIMIT 1",
+            $identificacion
+        );
+
+        if (!$votante) {
+            echo json_encode(['success' => true, 'exists' => false]);
+            return;
+        }
+
+        $lider_responsable = '';
+        if (!empty($votante['lider_nombres'])) {
+            $lider_responsable = trim($votante['lider_nombres'] . ' ' . $votante['lider_apellidos']);
+        }
+
+        $registrado_por = '';
+        if (!empty($votante['admin_directo_nombre'])) {
+            $registrado_por = $votante['admin_directo_nombre'];
+        } elseif (!empty($votante['admin_lider_nombre'])) {
+            $registrado_por = $votante['admin_lider_nombre'];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'exists' => true,
+            'data' => [
+                'id_votante' => $votante['id_votante'],
+                'nombres' => $votante['nombres'],
+                'apellidos' => $votante['apellidos'],
+                'identificacion' => $votante['identificacion'],
+                'nombre_tipo' => $votante['nombre_tipo'],
+                'sexo' => $votante['sexo'],
+                'telefono' => $votante['telefono'],
+                'mesa' => $votante['mesa'],
+                'lugar_mesa' => $votante['lugar_mesa'],
+                'departamento_nombre' => $votante['departamento_nombre'],
+                'municipio_nombre' => $votante['municipio_nombre'],
+                'lider_responsable' => $lider_responsable,
+                'registrado_por' => $registrado_por
+            ]
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error al verificar identificación: ' . $e->getMessage()]);
+    }
+}
+
+/**
+ * Registrar intento como duplicado
+ */
+function registrarDuplicadoIntento() {
+    try {
+        $identificacion = trim($_POST['identificacion'] ?? '');
+        $id_lider_intento = $_POST['id_lider_intento'] ?? '';
+
+        if ($identificacion === '') {
+            echo json_encode(['success' => false, 'message' => 'Identificación no válida']);
+            return;
+        }
+
+        $votante = DB::queryFirstRow(
+            "SELECT v.*, t.nombre_tipo,
+                    l.nombres as lider_nombres, l.apellidos as lider_apellidos,
+                    CONCAT(u_admin.nombres, ' ', u_admin.apellidos) as admin_directo_nombre,
+                    CONCAT(u_lider_admin.nombres, ' ', u_lider_admin.apellidos) as admin_lider_nombre
+             FROM votantes v
+             INNER JOIN tipos_identificacion t ON v.id_tipo_identificacion = t.id_tipo_identificacion
+             LEFT JOIN lideres l ON v.id_lider = l.id_lider
+             LEFT JOIN usuarios u_admin ON v.id_administrador_directo = u_admin.id_usuario
+             LEFT JOIN usuarios u_lider_admin ON l.id_usuario_creador = u_lider_admin.id_usuario
+             WHERE v.identificacion = ?
+             LIMIT 1",
+            $identificacion
+        );
+
+        if (!$votante) {
+            echo json_encode(['success' => false, 'message' => 'No se encontró el votante para registrar el duplicado']);
+            return;
+        }
+
+        $usuario_id = $_SESSION['usuario_id'];
+        $usuario_info = DB::queryFirstRow(
+            "SELECT CONCAT(nombres, ' ', apellidos) as nombre_completo FROM usuarios WHERE id_usuario = ?",
+            $usuario_id
+        );
+        $nombre_usuario_intento = $usuario_info ? $usuario_info['nombre_completo'] : ($_SESSION['usuario'] ?? 'Usuario');
+
+        if (!empty($id_lider_intento) && $id_lider_intento !== 'actual' && $id_lider_intento !== 'yo') {
+            $lider = DB::queryFirstRow(
+                "SELECT CONCAT(nombres, ' ', apellidos) as nombre FROM lideres WHERE id_lider = ?",
+                $id_lider_intento
+            );
+            if ($lider) {
+                $nombre_usuario_intento .= ', Líder: ' . $lider['nombre'];
+            }
+        } else {
+            $nombre_usuario_intento .= ' (Registro directo)';
+        }
+
+        $detalles_existente = '';
+        if (!empty($votante['lider_nombres'])) {
+            $detalles_existente = 'Pertenece al líder: ' . trim($votante['lider_nombres'] . ' ' . $votante['lider_apellidos']);
+            if (!empty($votante['admin_lider_nombre'])) {
+                $detalles_existente .= ' | Admin: ' . $votante['admin_lider_nombre'];
+            }
+        } elseif (!empty($votante['admin_directo_nombre'])) {
+            $detalles_existente = 'Registrado por: ' . $votante['admin_directo_nombre'];
+        }
+
+        $duplicado_existente = DB::queryFirstRow(
+            "SELECT id_duplicado, nombre_usuario_intento FROM votantes_duplicados WHERE identificacion = ?",
+            $identificacion
+        );
+
+        if ($duplicado_existente) {
+            $nombres_acumulados = $duplicado_existente['nombre_usuario_intento'] . ' | ' . $nombre_usuario_intento;
+            $fecha_intento = date('Y-m-d H:i:s');
+
+            DB::update(
+                'votantes_duplicados',
+                [
+                    'nombre_usuario_intento' => $nombres_acumulados,
+                    'fecha_intento' => $fecha_intento
+                ],
+                'id_duplicado = ?',
+                $duplicado_existente['id_duplicado']
+            );
+        } else {
+            $nombre_existente = trim($votante['nombres'] . ' ' . $votante['apellidos']);
+
+            DB::insert('votantes_duplicados', [
+                'nombres' => trim($votante['nombres']),
+                'apellidos' => trim($votante['apellidos']),
+                'identificacion' => trim($votante['identificacion']),
+                'telefono' => trim($votante['telefono'] ?? ''),
+                'mesa' => !empty($votante['mesa']) ? intval($votante['mesa']) : 0,
+                'lugar_mesa' => !empty($votante['lugar_mesa']) ? trim($votante['lugar_mesa']) : null,
+                'tipo_existente' => 'votante',
+                'nombre_existente' => $nombre_existente,
+                'detalles_existente' => $detalles_existente,
+                'metodo_intento' => 'verificacion',
+                'identificacion_lider_intento' => null,
+                'id_usuario_intento' => $usuario_id,
+                'nombre_usuario_intento' => $nombre_usuario_intento,
+                'id_departamento' => !empty($votante['id_departamento']) ? intval($votante['id_departamento']) : null,
+                'id_municipio' => !empty($votante['id_municipio']) ? intval($votante['id_municipio']) : null
+            ]);
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Intento duplicado registrado correctamente']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Error al registrar duplicado: ' . $e->getMessage()]);
     }
 }
 ?>

@@ -108,7 +108,23 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                         <input type="hidden" id="action" name="action" value="crear">
                         <input type="hidden" id="es_lider" value="<?php echo $es_lider ? '1' : '0'; ?>">
                         <input type="hidden" id="usuario_nombre_actual" value="<?php echo htmlspecialchars($_SESSION['usuario_nombre'] ?? ''); ?>">
-                        
+                          <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_tipo_identificacion" class="form-label">Tipo de Identificación *</label>
+                                <select class="form-select" id="id_tipo_identificacion" name="id_tipo_identificacion" required>
+                                    <option value="">Seleccione...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="identificacion" class="form-label">Identificación *</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="identificacion" name="identificacion" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="btnVerificarIdentificacion" disabled>
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="nombres" class="form-label">Nombres *</label>
@@ -120,18 +136,6 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
                             </div>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="id_tipo_identificacion" class="form-label">Tipo de Identificación *</label>
-                                <select class="form-select" id="id_tipo_identificacion" name="id_tipo_identificacion" required>
-                                    <option value="">Seleccione...</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="identificacion" class="form-label">Identificación *</label>
-                                <input type="text" class="form-control" id="identificacion" name="identificacion" required>
-                            </div>
-                        </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -205,7 +209,144 @@ $es_lider = $_SESSION['usuario_rol'] == 3;
             </div>
         </div>
     </div>
+
+    <!-- Modal Duplicado -->
+    <div class="modal fade" id="modalDuplicado" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle text-warning"></i> Votante ya registrado
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="duplicado_identificacion">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombres</label>
+                            <input type="text" class="form-control" id="dup_nombres" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Apellidos</label>
+                            <input type="text" class="form-control" id="dup_apellidos" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo de Identificación</label>
+                            <input type="text" class="form-control" id="dup_tipo_identificacion" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Identificación</label>
+                            <input type="text" class="form-control" id="dup_identificacion" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Sexo</label>
+                            <input type="text" class="form-control" id="dup_sexo" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" id="dup_telefono" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Departamento</label>
+                            <input type="text" class="form-control" id="dup_departamento" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Municipio</label>
+                            <input type="text" class="form-control" id="dup_municipio" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Mesa</label>
+                            <input type="text" class="form-control" id="dup_mesa" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Lugar Mesa</label>
+                            <input type="text" class="form-control" id="dup_lugar_mesa" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Registrado por</label>
+                            <input type="text" class="form-control" id="dup_registrado_por" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Líder Responsable</label>
+                            <input type="text" class="form-control" id="dup_lider_responsable" disabled>
+                        </div>
+                    </div>
+
+                    <?php if (!$es_lider): ?>
+                    <div class="mb-3" id="duplicadoLiderField">
+                        <label for="id_lider_intento" class="form-label">Líder que intentó registrar *</label>
+                        <select class="form-select" id="id_lider_intento" required>
+                            <option value="">Seleccione...</option>
+                            <option value="yo">Por mí (<?php echo htmlspecialchars($_SESSION['usuario_nombre']); ?>)</option>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-warning" id="btnRegistrarDuplicado">
+                        <i class="fas fa-copy"></i> Agregar como duplicado
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     
+    <!-- Modal Duplicados Importacion -->
+    <div class="modal fade" id="modalDuplicadosImport" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle text-warning"></i> Duplicados detectados en importacion
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Se encontraron registros con identificacion ya existente. Puedes guardarlos como duplicados.</p>
+
+                    <div class="mb-3">
+                        <ul class="list-group" id="listaDuplicadosImport"></ul>
+                    </div>
+
+                    <div class="mb-3" id="duplicadoImportLiderField">
+                        <label for="id_lider_intento_import" class="form-label">Lider que intento registrar *</label>
+                        <select class="form-select" id="id_lider_intento_import" required>
+                            <option value="">Seleccione...</option>
+                            <option value="yo">Por mi (<?php echo htmlspecialchars($_SESSION['usuario_nombre']); ?>)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                    <button type="button" class="btn btn-warning" id="btnGuardarDuplicadosImport">
+                        <i class="fas fa-copy"></i> Guardar duplicados
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Importar -->
     <div class="modal fade" id="modalImportar" tabindex="-1">
         <div class="modal-dialog modal-lg">
