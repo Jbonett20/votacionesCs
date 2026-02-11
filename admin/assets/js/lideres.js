@@ -1,6 +1,7 @@
 $(document).ready(function() {
     let table;
     const esSuperAdmin = typeof ES_SUPER_ADMIN !== 'undefined' ? ES_SUPER_ADMIN : false;
+    let modalLiderEdicion = false;
     
     // Inicializar sistema de ubicaciones
     inicializarUbicaciones('id_departamento', 'id_municipio');
@@ -119,9 +120,76 @@ $(document).ready(function() {
     
     // Abrir modal para nuevo líder
     $('#modalLider').on('show.bs.modal', function() {
-        if ($('#action').val() === 'crear') {
+        if (!modalLiderEdicion) {
             limpiarFormulario();
         }
+    });
+
+    $('#modalLider').on('hidden.bs.modal', function() {
+        limpiarFormulario();
+        modalLiderEdicion = false;
+    });
+
+    function actualizarBotonVerificar() {
+        const valor = $('#identificacion').val() || '';
+        const tieneNumero = /\d/.test(valor);
+        $('#btnVerificarIdentificacion').prop('disabled', !tieneNumero);
+    }
+
+    $('#identificacion').on('input', function() {
+        actualizarBotonVerificar();
+    });
+
+    $('#btnVerificarIdentificacion').on('click', function() {
+        const identificacion = ($('#identificacion').val() || '').trim();
+        if (!/\d/.test(identificacion)) {
+            return;
+        }
+
+        $.ajax({
+            url: '../controllers/lideres_controller.php',
+            type: 'POST',
+            data: { action: 'verificar_identificacion', identificacion: identificacion },
+            dataType: 'json',
+            success: function(response) {
+                if (response && response.success && response.exists) {
+                    const data = response.data || {};
+                    let html = `<strong>Tipo:</strong> ${data.tipo || '-'}<br>`;
+                    html += `<strong>Nombre:</strong> ${data.nombre || '-'}<br>`;
+                    if (data.creado_por) {
+                        html += `<strong>Creado por:</strong> ${data.creado_por}<br>`;
+                    }
+                    if (data.detalles) {
+                        html += `<strong>Detalle:</strong> ${data.detalles}`;
+                    }
+
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Identificación ya registrada',
+                        html: html
+                    });
+                } else if (response && response.success && response.exists === false) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Sin coincidencias',
+                        text: 'No hay un líder registrado con esa identificación.'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message || 'No se pudo verificar la identificación.'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error de conexión al verificar la identificación.'
+                });
+            }
+        });
     });
     
     // Guardar líder
@@ -173,6 +241,7 @@ $(document).ready(function() {
     
     // Editar líder
     window.editarLider = function(id) {
+        modalLiderEdicion = true;
         $.ajax({
             url: '../controllers/lideres_controller.php',
             type: 'POST',
@@ -188,6 +257,7 @@ $(document).ready(function() {
                     $('#apellidos').val(lider.apellidos);
                     $('#id_tipo_identificacion').val(lider.id_tipo_identificacion);
                     $('#identificacion').val(lider.identificacion);
+                    actualizarBotonVerificar();
                     $('#sexo').val(lider.sexo);
                     $('#telefono').val(lider.telefono || '');
                     $('#direccion').val(lider.direccion || '');
@@ -256,4 +326,5 @@ $(document).ready(function() {
     // Inicializar
     initDataTable();
     cargarTiposIdentificacion();
+    actualizarBotonVerificar();
 });

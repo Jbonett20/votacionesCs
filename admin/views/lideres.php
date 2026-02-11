@@ -89,18 +89,6 @@ requerirRol([1, 2]);
                     <div class="modal-body">
                         <input type="hidden" id="lider_id" name="lider_id">
                         <input type="hidden" id="action" name="action" value="crear">
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="nombres" class="form-label">Nombres *</label>
-                                <input type="text" class="form-control" id="nombres" name="nombres" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="apellidos" class="form-label">Apellidos *</label>
-                                <input type="text" class="form-control" id="apellidos" name="apellidos" required>
-                            </div>
-                        </div>
-                        
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="id_tipo_identificacion" class="form-label">Tipo de Identificación *</label>
@@ -110,7 +98,22 @@ requerirRol([1, 2]);
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="identificacion" class="form-label">Identificación *</label>
-                                <input type="text" class="form-control" id="identificacion" name="identificacion" required>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="identificacion" name="identificacion" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="btnVerificarIdentificacion" disabled>
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nombres" class="form-label">Nombres *</label>
+                                <input type="text" class="form-control" id="nombres" name="nombres" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="apellidos" class="form-label">Apellidos *</label>
+                                <input type="text" class="form-control" id="apellidos" name="apellidos" required>
                             </div>
                         </div>
                         

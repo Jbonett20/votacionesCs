@@ -2,6 +2,8 @@ $(document).ready(function() {
     console.log('votantes.js cargado correctamente');
     let votantesTable;
     const esLider = $('#es_lider').val() === '1';
+    let importDuplicados = [];
+    let modalVotanteEdicion = false;
     console.log('Es líder:', esLider);
     
     // Inicializar sistema de ubicaciones
@@ -155,6 +157,72 @@ $(document).ready(function() {
             });
         }
     }
+
+    function cargarLideresDuplicado() {
+        if (!esLider) {
+            const usuarioNombre = $('#usuario_nombre_actual').val();
+            $.ajax({
+                url: '../controllers/votantes_controller.php',
+                type: 'POST',
+                data: { action: 'obtener_lideres' },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        let options = '<option value="">Seleccione...</option>';
+                        options += `<option value="yo">Por mí (${usuarioNombre})</option>`;
+                        response.data.forEach(function(lider) {
+                            options += `<option value="${lider.id_lider}">${lider.nombres} ${lider.apellidos}</option>`;
+                        });
+                        $('#id_lider_intento').html(options);
+
+                        if ($('#id_lider_intento').hasClass('select2-hidden-accessible')) {
+                            $('#id_lider_intento').select2('destroy');
+                        }
+
+                        $('#id_lider_intento').select2({
+                            theme: 'bootstrap-5',
+                            dropdownParent: $('#modalDuplicado'),
+                            placeholder: 'Seleccione un líder',
+                            allowClear: true,
+                            width: '100%'
+                        });
+                    }
+                }
+            });
+        }
+    }
+
+    function cargarLideresDuplicadoImport() {
+        const usuarioNombre = $('#usuario_nombre_actual').val();
+        $.ajax({
+            url: '../controllers/votantes_controller.php',
+            type: 'POST',
+            data: { action: 'obtener_lideres' },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    let options = '<option value="">Seleccione...</option>';
+                    options += `<option value="yo">Por mi (${usuarioNombre})</option>`;
+                    response.data.forEach(function(lider) {
+                        options += `<option value="${lider.id_lider}">${lider.nombres} ${lider.apellidos}</option>`;
+                    });
+                    $('#id_lider_intento_import').html(options);
+
+                    if ($('#id_lider_intento_import').hasClass('select2-hidden-accessible')) {
+                        $('#id_lider_intento_import').select2('destroy');
+                    }
+
+                    $('#id_lider_intento_import').select2({
+                        theme: 'bootstrap-5',
+                        dropdownParent: $('#modalDuplicadosImport'),
+                        placeholder: 'Seleccione un lider',
+                        allowClear: true,
+                        width: '100%'
+                    });
+                }
+            }
+        });
+    }
     
     // Limpiar formulario
     function limpiarFormulario() {
@@ -180,9 +248,134 @@ $(document).ready(function() {
     
     // Abrir modal para nuevo votante
     $('#modalVotante').on('show.bs.modal', function() {
-        if ($('#action').val() === 'crear') {
+        if (!modalVotanteEdicion) {
             limpiarFormulario();
         }
+    });
+
+    $('#modalVotante').on('hidden.bs.modal', function() {
+        limpiarFormulario();
+        modalVotanteEdicion = false;
+    });
+
+    function actualizarBotonVerificar() {
+        const valor = $('#identificacion').val() || '';
+        const tieneNumero = /\d/.test(valor);
+        $('#btnVerificarIdentificacion').prop('disabled', !tieneNumero);
+    }
+
+    $('#identificacion').on('input', function() {
+        actualizarBotonVerificar();
+    });
+
+    $('#btnVerificarIdentificacion').on('click', function() {
+        const identificacion = ($('#identificacion').val() || '').trim();
+        if (!/\d/.test(identificacion)) {
+            return;
+        }
+
+        $.ajax({
+            url: '../controllers/votantes_controller.php',
+            type: 'POST',
+            data: { action: 'verificar_identificacion', identificacion: identificacion },
+            dataType: 'json',
+            success: function(response) {
+                if (response && response.success && response.exists) {
+                    const data = response.data || {};
+                    const sexoTexto = data.sexo === 'M' ? 'Masculino' : (data.sexo === 'F' ? 'Femenino' : (data.sexo || '-'));
+
+                    $('#duplicado_identificacion').val(data.identificacion || identificacion);
+                    $('#dup_nombres').val(data.nombres || '');
+                    $('#dup_apellidos').val(data.apellidos || '');
+                    $('#dup_tipo_identificacion').val(data.nombre_tipo || '');
+                    $('#dup_identificacion').val(data.identificacion || identificacion);
+                    $('#dup_sexo').val(sexoTexto || '-');
+                    $('#dup_telefono').val(data.telefono || '-');
+                    $('#dup_departamento').val(data.departamento_nombre || '-');
+                    $('#dup_municipio').val(data.municipio_nombre || '-');
+                    $('#dup_mesa').val(data.mesa || '0');
+                    $('#dup_lugar_mesa').val(data.lugar_mesa || '-');
+                    $('#dup_registrado_por').val(data.registrado_por || '-');
+                    $('#dup_lider_responsable').val(data.lider_responsable || '-');
+
+                    if (!esLider) {
+                        $('#id_lider_intento').val('').trigger('change');
+                    }
+
+                    $('#modalDuplicado').modal('show');
+                } else if (response && response.success && response.exists === false) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Sin coincidencias',
+                        text: 'No hay un votante registrado con esa identificación.'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message || 'No se pudo verificar la identificación.'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error de conexión al verificar la identificación.'
+                });
+            }
+        });
+    });
+
+    $('#btnRegistrarDuplicado').on('click', function() {
+        const identificacion = ($('#duplicado_identificacion').val() || '').trim();
+        let idLiderIntento = 'actual';
+
+        if (!esLider) {
+            idLiderIntento = $('#id_lider_intento').val();
+            if (!idLiderIntento) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Falta seleccionar líder',
+                    text: 'Selecciona quién intentó registrar el duplicado.'
+                });
+                return;
+            }
+        }
+
+        $.ajax({
+            url: '../controllers/votantes_controller.php',
+            type: 'POST',
+            data: {
+                action: 'registrar_duplicado_intento',
+                identificacion: identificacion,
+                id_lider_intento: idLiderIntento
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response && response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Registrado',
+                        text: response.message || 'Intento duplicado registrado.'
+                    });
+                    $('#modalDuplicado').modal('hide');
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message || 'No se pudo registrar el duplicado.'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error de conexión al registrar el duplicado.'
+                });
+            }
+        });
     });
     
     // Guardar votante
@@ -247,6 +440,7 @@ $(document).ready(function() {
     
     // Editar votante
     window.editarVotante = function(id) {
+        modalVotanteEdicion = true;
         $.ajax({
             url: '../controllers/votantes_controller.php',
             type: 'POST',
@@ -262,6 +456,7 @@ $(document).ready(function() {
                     $('#apellidos').val(votante.apellidos);
                     $('#id_tipo_identificacion').val(votante.id_tipo_identificacion);
                     $('#identificacion').val(votante.identificacion);
+                    actualizarBotonVerificar();
                     $('#sexo').val(votante.sexo);
                     $('#telefono').val(votante.telefono || '');
                     $('#mesa').val(votante.mesa || '');
@@ -342,6 +537,9 @@ $(document).ready(function() {
     initDataTable();
     cargarTiposIdentificacion();
     cargarLideres();
+    cargarLideresDuplicado();
+    cargarLideresDuplicadoImport();
+    actualizarBotonVerificar();
     
     // Importar votantes
     $('#formImportar').on('submit', function(e) {
@@ -373,11 +571,8 @@ $(document).ready(function() {
                     if (response.duplicados && response.duplicados.length > 0) {
                         mensaje += `<div class="alert alert-warning">
                             <h6><i class="fas fa-exclamation-triangle"></i> Duplicados Encontrados (${response.duplicados.length})</h6>
-                            <ul class="mb-0" style="max-height: 200px; overflow-y: auto;">`;
-                        response.duplicados.forEach(dup => {
-                            mensaje += `<li>${dup}</li>`;
-                        });
-                        mensaje += `</ul></div>`;
+                            <p class="mb-0">Se mostraran en una ventana para decidir si se guardan como duplicados.</p>
+                        </div>`;
                     }
                     
                     // Mostrar errores si existen
@@ -394,6 +589,20 @@ $(document).ready(function() {
                     $('#mensajeImportacion').html(mensaje);
                     $('#resultadoImportacion').show();
                     $('#archivo').val('');
+
+                    if (response.duplicados_detalle && response.duplicados_detalle.length > 0) {
+                        importDuplicados = response.duplicados_detalle;
+                        const lista = $('#listaDuplicadosImport');
+                        lista.empty();
+                        response.duplicados_detalle.forEach(function(dup) {
+                            const detalles = dup.detalles ? ` | ${dup.detalles}` : '';
+                            const nombre = `${dup.nombres || ''} ${dup.apellidos || ''}`.trim();
+                            const texto = `Linea ${dup.linea}: ${nombre} - ${dup.identificacion} (${dup.tipo}: ${dup.nombre})${detalles}`;
+                            lista.append(`<li class="list-group-item">${texto}</li>`);
+                        });
+                        $('#id_lider_intento_import').val('').trigger('change');
+                        $('#modalDuplicadosImport').modal('show');
+                    }
                     
                     // Recargar tabla si se importó algo
                     if (response.insertados > 0) {
@@ -423,6 +632,64 @@ $(document).ready(function() {
         $('#formImportar')[0].reset();
         $('#resultadoImportacion').hide();
         $('#mensajeImportacion').html('');
+    });
+
+    $('#btnGuardarDuplicadosImport').on('click', function() {
+        if (!importDuplicados || importDuplicados.length === 0) {
+            return;
+        }
+
+        const idLiderIntento = $('#id_lider_intento_import').val();
+        if (!idLiderIntento) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Falta seleccionar lider',
+                text: 'Selecciona quien intento registrar los duplicados.'
+            });
+            return;
+        }
+
+        const identificaciones = importDuplicados.map(item => item.identificacion);
+
+        $.ajax({
+            url: '../controllers/importar_controller.php',
+            type: 'POST',
+            data: {
+                action: 'registrar_duplicados_importacion',
+                identificaciones: JSON.stringify(identificaciones),
+                id_lider_intento: idLiderIntento
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response && response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Guardado',
+                        text: response.message || 'Duplicados guardados correctamente.'
+                    });
+                    $('#modalDuplicadosImport').modal('hide');
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message || 'No se pudieron guardar los duplicados.'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error de conexion al guardar duplicados.'
+                });
+            }
+        });
+    });
+
+    $('#modalDuplicadosImport').on('hidden.bs.modal', function() {
+        importDuplicados = [];
+        $('#listaDuplicadosImport').empty();
+        $('#id_lider_intento_import').val('').trigger('change');
     });
 });
 
