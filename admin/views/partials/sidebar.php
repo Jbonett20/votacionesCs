@@ -31,6 +31,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <span>Votantes</span>
         </a>
         <?php endif; ?>
+           <?php if (esLider()): ?>
+        <a href="control.php" class="menu-item <?php echo ($current_page == 'control.php') ? 'active' : ''; ?>">
+            <i class="fas fa-check-double"></i>
+            <span>Control</span>
+        </a>
+        <?php endif; ?>
         
         <a href="duplicados.php" class="menu-item <?php echo ($current_page == 'duplicados.php') ? 'active' : ''; ?>">
             <i class="fas fa-exclamation-triangle"></i>
