@@ -124,6 +124,10 @@ if (esSuperAdmin()) {
                 <i class="fas fa-users"></i>
                 <span>Votantes</span>
             </a>
+            <a href="control.php" class="menu-item">
+                <i class="fas fa-check-double"></i>
+                <span>Control</span>
+            </a>
             <?php endif; ?>
             
             <a href="reportes.php" class="menu-item">
